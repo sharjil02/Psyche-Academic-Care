@@ -421,6 +421,7 @@ export const initialAdminFaculty: AdminFaculty[] = [
 
 export type NoticeCategory = 'Academic' | 'Exam' | 'Holiday' | 'Fee' | 'General';
 export type NoticePriority = 'Normal' | 'Urgent';
+export type NoticeTarget = 'home' | 'student' | 'both';
 
 export interface AdminNotice {
   id: string;
@@ -428,6 +429,7 @@ export interface AdminNotice {
   body: string;
   category: NoticeCategory;
   priority: NoticePriority;
+  target?: NoticeTarget;
   publishedBy: string;
   publishedDate: string;
 }
@@ -439,6 +441,7 @@ export const initialAdminNotices: AdminNotice[] = [
     body: 'The mid-term model assessment for all batches will be held from October 5–10, 2026. Students must carry their admit cards. Hall seating plans will be posted on the notice board by October 3.',
     category: 'Exam',
     priority: 'Urgent',
+    target: 'student',
     publishedBy: 'Dr. Mahfuzul Alam (Director)',
     publishedDate: 'Sep 18, 2026',
   },
@@ -448,6 +451,7 @@ export const initialAdminNotices: AdminNotice[] = [
     body: 'All students are requested to pay their October 2026 monthly tuition fee by October 10, 2026. Late payments will incur a fine of ৳100 per week. Please contact the accounts desk for bKash or Nagad payment details.',
     category: 'Fee',
     priority: 'Urgent',
+    target: 'student',
     publishedBy: 'Accounts Office',
     publishedDate: 'Sep 19, 2026',
   },
@@ -457,8 +461,19 @@ export const initialAdminNotices: AdminNotice[] = [
     body: 'The coaching centre will remain closed from October 11–14, 2026 on the occasion of Durga Puja. Regular classes will resume from October 15, 2026 (Wednesday) as per schedule.',
     category: 'Holiday',
     priority: 'Normal',
+    target: 'both',
     publishedBy: 'Dr. Mahfuzul Alam (Director)',
     publishedDate: 'Sep 17, 2026',
+  },
+  {
+    id: 'notice-4',
+    title: 'Admissions Open for SSC & HSC Board Exam Batches 2026-2027',
+    body: 'Fresh enrollment is now open for upcoming SSC and HSC batches. Early registration gives tuition fee concessions and complimentary printed lecture notes.',
+    category: 'Academic',
+    priority: 'Urgent',
+    target: 'home',
+    publishedBy: 'Admission Desk',
+    publishedDate: 'Sep 19, 2026',
   },
 ];
 

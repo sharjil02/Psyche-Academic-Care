@@ -541,12 +541,16 @@ export const StudentPortal: React.FC = () => {
                   </p>
                 </div>
                 <div className="space-y-4">
-                  {notices.length === 0 && (
-                    <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-2xl">
-                      {isBangla ? 'এখন পর্যন্ত কোনো নোটিশ প্রকাশিত হয়নি।' : 'No notices published yet.'}
-                    </div>
-                  )}
-                  {notices.map(notice => {
+                  {(() => {
+                    const studentNotices = notices.filter(n => !n.target || n.target === 'student' || n.target === 'both');
+                    if (studentNotices.length === 0) {
+                      return (
+                        <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-2xl">
+                          {isBangla ? 'এখন পর্যন্ত শিক্ষার্থীদের জন্য কোনো নোটিশ প্রকাশিত হয়নি।' : 'No notices published for students yet.'}
+                        </div>
+                      );
+                    }
+                    return studentNotices.map(notice => {
                     const catColor: Record<string, string> = {
                       Exam: 'bg-blue-50 text-blue-700 border-blue-200',
                       Academic: 'bg-teal-50 text-teal-700 border-teal-200',
@@ -577,8 +581,9 @@ export const StudentPortal: React.FC = () => {
                         </div>
                       </div>
                     );
-                  })}
-                </div>
+                  });
+                })()}
+              </div>
               </div>
             )}
 

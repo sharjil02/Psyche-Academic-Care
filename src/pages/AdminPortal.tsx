@@ -19,6 +19,7 @@ import {
   AdminRoutine,
   NoticeCategory,
   NoticePriority,
+  NoticeTarget,
   WeekDay,
 } from '../data/adminData';
 import {
@@ -115,7 +116,20 @@ export const AdminPortal: React.FC = () => {
 
   const [notices, setNotices] = useState<AdminNotice[]>(() => {
     const saved = localStorage.getItem('pschye_admin_notices');
-    return saved ? JSON.parse(saved) : initialAdminNotices;
+    if (!saved) return initialAdminNotices;
+    try {
+      const parsed: AdminNotice[] = JSON.parse(saved);
+      return parsed.map(n => {
+        if (!n.target) {
+          const match = initialAdminNotices.find(init => init.id === n.id);
+          if (match?.target) return { ...n, target: match.target };
+          return { ...n, target: 'both' as NoticeTarget };
+        }
+        return n;
+      });
+    } catch {
+      return initialAdminNotices;
+    }
   });
 
   const [routines, setRoutines] = useState<AdminRoutine[]>(() => {
@@ -441,11 +455,19 @@ export const AdminPortal: React.FC = () => {
 
   // ─── NOTICE HANDLERS ─────────────────────────────────────────────────────────
   const [showAddNoticeModal, setShowAddNoticeModal] = useState(false);
-  const [newNotice, setNewNotice] = useState({
+  const [noticeFilter, setNoticeFilter] = useState<'all' | 'home' | 'student'>('all');
+  const [newNotice, setNewNotice] = useState<{
+    title: string;
+    body: string;
+    category: NoticeCategory;
+    priority: NoticePriority;
+    target: NoticeTarget;
+  }>({
     title: '',
     body: '',
-    category: 'General' as NoticeCategory,
-    priority: 'Normal' as NoticePriority,
+    category: 'General',
+    priority: 'Normal',
+    target: 'home',
   });
 
   const handleCreateNotice = (e: React.FormEvent) => {
@@ -457,19 +479,20 @@ export const AdminPortal: React.FC = () => {
       body: newNotice.body.trim(),
       category: newNotice.category,
       priority: newNotice.priority,
+      target: newNotice.target || 'both',
       publishedBy: currentUser?.name || 'Admin',
       publishedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     };
     setNotices(prev => [notice, ...prev]);
     setShowAddNoticeModal(false);
-    setNewNotice({ title: '', body: '', category: 'General', priority: 'Normal' });
-    showToast('Notice published successfully!');
+    setNewNotice({ title: '', body: '', category: 'General', priority: 'Normal', target: 'home' });
+    showToast(isBangla ? 'নোটিশ সফলভাবে প্রকাশিত হয়েছে!' : 'Notice published successfully!');
   };
 
   const handleDeleteNotice = (id: string) => {
-    if (confirm('Delete this notice?')) {
+    if (confirm(isBangla ? 'এই নোটিশটি মুছে ফেলতে চান?' : 'Delete this notice?')) {
       setNotices(prev => prev.filter(n => n.id !== id));
-      showToast('Notice deleted.');
+      showToast(isBangla ? 'নোটিশ মুছে ফেলা হয়েছে।' : 'Notice deleted.');
     }
   };
 
@@ -1428,39 +1451,107 @@ export const AdminPortal: React.FC = () => {
                   <Bell className="w-4 h-4" /><span>{isBangla ? 'নতুন নোটিশ প্রকাশ করুন' : 'Post New Notice'}</span>
                 </button>
               </div>
+
+              {/* Filter Tabs for Destination */}
+              <div className="flex flex-wrap items-center gap-2 mt-4 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setNoticeFilter('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    noticeFilter === 'all'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {isBangla ? 'সকল নোটিশ' : 'All Notices'} ({notices.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNoticeFilter('home')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    noticeFilter === 'home'
+                      ? 'bg-rose-700 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>🏠</span>
+                  <span>{isBangla ? 'হোম পেইজ' : 'Home Page'}</span>
+                  <span className="text-[10px] opacity-80">({notices.filter(n => n.target === 'home' || n.target === 'both').length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNoticeFilter('student')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    noticeFilter === 'student'
+                      ? 'bg-teal-700 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>🎓</span>
+                  <span>{isBangla ? 'শিক্ষার্থী প্যানেল' : 'Student Panel'}</span>
+                  <span className="text-[10px] opacity-80">({notices.filter(n => n.target === 'student' || n.target === 'both').length})</span>
+                </button>
+              </div>
+
               <div className="space-y-4 mt-5">
-                {notices.length === 0 && (
-                  <div className="text-center py-12 text-slate-400 text-sm">{isBangla ? 'কোনো নোটিশ নেই।' : 'No notices published yet.'}</div>
-                )}
-                {notices.map(notice => {
-                  const catColor: Record<string, string> = {
-                    Exam: 'bg-blue-50 text-blue-700 border-blue-200',
-                    Academic: 'bg-teal-50 text-teal-700 border-teal-200',
-                    Holiday: 'bg-green-50 text-green-700 border-green-200',
-                    Fee: 'bg-amber-50 text-amber-700 border-amber-200',
-                    General: 'bg-slate-100 text-slate-600 border-slate-200',
-                  };
-                  return (
-                    <div key={notice.id} className={`p-5 rounded-2xl border transition-all bg-white hover:shadow-sm ${notice.priority === 'Urgent' ? 'border-rose-200' : 'border-slate-200'}`}>
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            {notice.priority === 'Urgent' && (
-                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200">
-                                <AlertTriangle className="w-2.5 h-2.5" /> {isBangla ? 'জরুরি' : 'URGENT'}
-                              </span>
-                            )}
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${catColor[notice.category]}`}>{notice.category}</span>
+                {(() => {
+                  const filtered = notices.filter(n => {
+                    if (noticeFilter === 'home') return n.target === 'home' || n.target === 'both';
+                    if (noticeFilter === 'student') return n.target === 'student' || n.target === 'both';
+                    return true;
+                  });
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center py-12 text-slate-400 text-sm">{isBangla ? 'এই বিভাগে কোনো নোটিশ নেই।' : 'No notices found in this filter.'}</div>
+                    );
+                  }
+                  return filtered.map(notice => {
+                    const catColor: Record<string, string> = {
+                      Exam: 'bg-blue-50 text-blue-700 border-blue-200',
+                      Academic: 'bg-teal-50 text-teal-700 border-teal-200',
+                      Holiday: 'bg-green-50 text-green-700 border-green-200',
+                      Fee: 'bg-amber-50 text-amber-700 border-amber-200',
+                      General: 'bg-slate-100 text-slate-600 border-slate-200',
+                    };
+                    return (
+                      <div key={notice.id} className={`p-5 rounded-2xl border transition-all bg-white hover:shadow-sm ${notice.priority === 'Urgent' ? 'border-rose-200' : 'border-slate-200'}`}>
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {/* Destination Badge */}
+                              {notice.target === 'home' && (
+                                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-maroon-800 border border-rose-200">
+                                  <span>🏠</span> {isBangla ? 'হোম পেইজ' : 'Home Page'}
+                                </span>
+                              )}
+                              {notice.target === 'student' && (
+                                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                                  <span>🎓</span> {isBangla ? 'শিক্ষার্থী প্যানেল' : 'Student Panel'}
+                                </span>
+                              )}
+                              {(notice.target === 'both' || !notice.target) && (
+                                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                  <span>🌐</span> {isBangla ? 'হোম ও শিক্ষার্থী উভয়' : 'Home & Student'}
+                                </span>
+                              )}
+
+                              {notice.priority === 'Urgent' && (
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200">
+                                  <AlertTriangle className="w-2.5 h-2.5" /> {isBangla ? 'জরুরি' : 'URGENT'}
+                                </span>
+                              )}
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${catColor[notice.category]}`}>{notice.category}</span>
+                            </div>
+                            <h3 className="text-sm font-bold text-slate-900">{notice.title}</h3>
+                            <p className="text-xs text-slate-600 leading-relaxed">{notice.body}</p>
+                            <p className="text-[11px] text-slate-400">{isBangla ? 'প্রকাশক:' : 'Published by:'} <strong className="text-slate-600">{notice.publishedBy}</strong> • {notice.publishedDate}</p>
                           </div>
-                          <h3 className="text-sm font-bold text-slate-900">{notice.title}</h3>
-                          <p className="text-xs text-slate-600 leading-relaxed">{notice.body}</p>
-                          <p className="text-[11px] text-slate-400">{isBangla ? 'প্রকাশক:' : 'Published by:'} <strong className="text-slate-600">{notice.publishedBy}</strong> {notice.publishedDate}</p>
+                          <button type="button" onClick={() => handleDeleteNotice(notice.id)} className="p-2 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"><Trash2 className="w-4 h-4" /></button>
                         </div>
-                        <button type="button" onClick={() => handleDeleteNotice(notice.id)} className="p-2 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"><Trash2 className="w-4 h-4" /></button>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             </div>
           </div>
@@ -2017,6 +2108,83 @@ export const AdminPortal: React.FC = () => {
               <button onClick={() => setShowAddNoticeModal(false)} className="p-2 rounded-xl hover:bg-slate-100 cursor-pointer"><X className="w-4 h-4 text-slate-500" /></button>
             </div>
             <form onSubmit={handleCreateNotice} className="space-y-4">
+              {/* Destination Selector: Home Page / Student Panel */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  {isBangla ? 'নোটিশ প্রদর্শনের স্থান (Destination) *' : 'Notice Display Location *'}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewNotice(prev => ({ ...prev, target: 'home' }))}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                      newNotice.target === 'home'
+                        ? 'bg-rose-50/80 border-maroon-700 text-maroon-900 ring-2 ring-maroon-700/20'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-base">🏠</span>
+                      <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                        newNotice.target === 'home' ? 'border-maroon-700 bg-maroon-700' : 'border-slate-300'
+                      }`}>
+                        {newNotice.target === 'home' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                    </div>
+                    <div className="text-xs font-bold">{isBangla ? 'হোম পেইজ' : 'Home Page'}</div>
+                    <div className="text-[10px] text-slate-500 leading-tight">
+                      {isBangla ? 'মূল ওয়েবসাইটে ভিজিটরদের জন্য' : 'Public website visitors'}
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewNotice(prev => ({ ...prev, target: 'student' }))}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                      newNotice.target === 'student'
+                        ? 'bg-teal-50/80 border-teal-700 text-teal-900 ring-2 ring-teal-700/20'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-base">🎓</span>
+                      <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                        newNotice.target === 'student' ? 'border-teal-700 bg-teal-700' : 'border-slate-300'
+                      }`}>
+                        {newNotice.target === 'student' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                    </div>
+                    <div className="text-xs font-bold">{isBangla ? 'শিক্ষার্থী প্যানেল' : 'Student Panel'}</div>
+                    <div className="text-[10px] text-slate-500 leading-tight">
+                      {isBangla ? 'স্টুডেন্ট পোর্টালে শিক্ষার্থীদের জন্য' : 'In Student Portal'}
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewNotice(prev => ({ ...prev, target: 'both' }))}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                      newNotice.target === 'both'
+                        ? 'bg-amber-50/80 border-amber-600 text-amber-950 ring-2 ring-amber-600/20'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-base">🌐</span>
+                      <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                        newNotice.target === 'both' ? 'border-amber-600 bg-amber-600' : 'border-slate-300'
+                      }`}>
+                        {newNotice.target === 'both' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                    </div>
+                    <div className="text-xs font-bold">{isBangla ? 'উভয় স্থানে' : 'Both Places'}</div>
+                    <div className="text-[10px] text-slate-500 leading-tight">
+                      {isBangla ? 'হোম ও শিক্ষার্থী উভয় প্যানেলে' : 'Visible everywhere'}
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1">{isBangla ? 'নোটিশের শিরোনাম *' : 'Notice Title *'}</label>
                 <input
