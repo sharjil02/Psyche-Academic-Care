@@ -1,0 +1,94 @@
+<svg viewBox="0 0 300 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <path id="psycheTopArc" d="M 46,130 A 104,104 0 1,1 254,130" fill="none" />
+  </defs>
+
+  <!-- Outer Circular Band -->
+  <circle cx="150" cy="130" r="115" stroke="#0f172a" stroke-width="8" fill="#ffffff" />
+  <circle cx="150" cy="130" r="88" stroke="#0f172a" stroke-width="3" fill="none" />
+
+  <!-- Arc Text: PSYCHE ACADEMIC CARE -->
+  <text font-family="system-ui, -apple-system, sans-serif" font-weight="900" text-transform="uppercase" letter-spacing="0.22em" font-size="15" fill="#0f172a">
+    <textPath href="#psycheTopArc" startOffset="50%" text-anchor="middle">
+      PSYCHE ACADEMIC CARE
+    </textPath>
+  </text>
+
+  <!-- Quadrant dividing crosshair -->
+  <line x1="62" y1="130" x2="238" y2="130" stroke="#0f172a" stroke-width="2.5" />
+  <line x1="150" y1="42" x2="150" y2="218" stroke="#0f172a" stroke-width="2.5" />
+
+  <!-- Central 4-pointed sparkle diamond cutout -->
+  <path d="M 150,118 Q 150,130 162,130 Q 150,130 150,142 Q 150,130 138,130 Q 150,130 150,118 Z" fill="#0f172a" />
+
+  <!-- QUADRANT 1: TOP-LEFT (Physics / Atom) -->
+  <g transform="translate(106, 86)">
+    <circle cx="0" cy="0" r="4" fill="#0f172a" />
+    <ellipse cx="0" cy="0" rx="18" ry="7" stroke="#0f172a" stroke-width="1.8" fill="none" transform="rotate(0)" />
+    <ellipse cx="0" cy="0" rx="18" ry="7" stroke="#0f172a" stroke-width="1.8" fill="none" transform="rotate(60)" />
+    <ellipse cx="0" cy="0" rx="18" ry="7" stroke="#0f172a" stroke-width="1.8" fill="none" transform="rotate(-60)" />
+    <circle cx="16" cy="7" r="2.2" fill="#0f172a" />
+    <circle cx="-13" cy="11" r="1.8" fill="#0f172a" />
+  </g>
+
+  <!-- QUADRANT 2: TOP-RIGHT (Mathematics / Exam) -->
+  <g transform="translate(168, 62)">
+    <rect x="10" y="2" width="26" height="34" rx="2" stroke="#0f172a" stroke-width="1.8" fill="none" />
+    <line x1="15" y1="9" x2="31" y2="9" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round" />
+    <line x1="15" y1="15" x2="27" y2="15" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round" />
+    <line x1="15" y1="21" x2="29" y2="21" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round" />
+    <text x="14" y="31" font-size="9" font-weight="bold" fill="#0f172a" font-family="serif">π ∑</text>
+    <g transform="translate(36, 18) rotate(35)">
+      <rect x="-2" y="-14" width="4" height="22" rx="1" fill="#0f172a" />
+      <polygon points="-2,8 2,8 0,14" fill="#0f172a" />
+    </g>
+    <rect x="-4" y="6" width="12" height="14" rx="1.5" stroke="#0f172a" stroke-width="1.4" fill="none" />
+    <line x1="-1" y1="10" x2="5" y2="10" stroke="#0f172a" stroke-width="1.2" />
+    <line x1="-1" y1="14" x2="4" y2="14" stroke="#0f172a" stroke-width="1.2" />
+  </g>
+
+  <!-- QUADRANT 3: BOTTOM-LEFT (Analytics / Growth) -->
+  <g transform="translate(80, 146)">
+    <rect x="0" y="0" width="38" height="30" rx="2" stroke="#0f172a" stroke-width="1.6" fill="none" />
+    <rect x="5" y="16" width="4" height="10" fill="#0f172a" />
+    <rect x="11" y="11" width="4" height="15" fill="#0f172a" />
+    <rect x="17" y="6" width="4" height="20" fill="#0f172a" />
+    <path d="M 6,15 L 13,10 L 20,4 L 32,1" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <circle cx="32" cy="1" r="2" fill="#0f172a" />
+    <g transform="translate(38, 26)">
+      <circle cx="0" cy="0" r="10" stroke="#0f172a" stroke-width="1.6" fill="#ffffff" />
+      <circle cx="0" cy="-3" r="3.2" fill="#0f172a" />
+      <path d="M -6,6 C -6,1 6,1 6,6" stroke="#0f172a" stroke-width="1.4" fill="none" />
+    </g>
+  </g>
+
+  <!-- QUADRANT 4: BOTTOM-RIGHT (Chemistry & Biology) -->
+  <g transform="translate(170, 145)">
+    <path d="M 12,2 L 12,10 L 2,28 C 0.5,31 2.5,33 6,33 L 26,33 C 29.5,33 31.5,31 30,28 L 20,10 L 20,2 Z" stroke="#0f172a" stroke-width="1.8" stroke-linejoin="round" fill="none" />
+    <path d="M 6,24 Q 16,21 26,24" stroke="#0f172a" stroke-width="1.4" fill="none" />
+    <circle cx="16" cy="18" r="1.5" fill="#0f172a" />
+    <circle cx="12" cy="27" r="1.8" fill="#0f172a" />
+    <circle cx="20" cy="28" r="1.4" fill="#0f172a" />
+    <g transform="translate(36, 4)">
+      <path d="M -2,0 C 4,6 4,12 -2,18 C -8,24 -8,30 -2,36" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round" fill="none" />
+      <path d="M 2,0 C -4,6 -4,12 2,18 C 8,24 8,30 2,36" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round" fill="none" />
+      <line x1="-1" y1="6" x2="1" y2="6" stroke="#0f172a" stroke-width="1.4" />
+      <line x1="-3" y1="12" x2="3" y2="12" stroke="#0f172a" stroke-width="1.4" />
+      <line x1="-1" y1="18" x2="1" y2="18" stroke="#0f172a" stroke-width="1.4" />
+      <line x1="-3" y1="24" x2="3" y2="24" stroke="#0f172a" stroke-width="1.4" />
+      <line x1="-1" y1="30" x2="1" y2="30" stroke="#0f172a" stroke-width="1.4" />
+    </g>
+  </g>
+
+  <!-- OPEN BOOK PEDESTAL AT THE BOTTOM -->
+  <g transform="translate(150, 260)">
+    <path d="M 0,-12 L 0,10" stroke="#0f172a" stroke-width="2" stroke-linecap="round" />
+    <path d="M 0,-10 C -40,-24 -90,-20 -130,5 C -85,-7 -40,-5 0,8 Z" fill="#0f172a" />
+    <path d="M 0,-2 C -38,-14 -85,-11 -122,15 C -80,2 -38,3 0,14 Z" fill="#0f172a" />
+    <path d="M 0,6 C -35,-4 -78,-2 -112,24 C -72,11 -35,11 0,18 Z" fill="#0f172a" />
+
+    <path d="M 0,-10 C 40,-24 90,-20 130,5 C 85,-7 40,-5 0,8 Z" fill="#0f172a" />
+    <path d="M 0,-2 C 38,-14 85,-11 122,15 C 80,2 38,3 0,14 Z" fill="#0f172a" />
+    <path d="M 0,6 C 35,-4 78,-2 112,24 C 72,11 35,11 0,18 Z" fill="#0f172a" />
+  </g>
+</svg>
