@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { TeacherCard } from '../components/TeacherCard';
 import { teachersData } from '../data/teachers';
 import { Teacher } from '../types';
-import { Users, Award, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Award, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export const Teachers: React.FC = () => {
@@ -19,6 +19,7 @@ export const Teachers: React.FC = () => {
 
   const subjects = [
     { id: 'All', label: isBangla ? 'সকল বিভাগ' : 'All Departments' },
+    { id: 'Director', label: isBangla ? 'পরিচালক' : 'Director' },
     { id: 'Physics & Higher Mathematics', label: isBangla ? 'পদার্থ ও উচ্চতর গণিত' : 'Physics & Higher Mathematics' },
     { id: 'Chemistry', label: isBangla ? 'রসায়ন' : 'Chemistry' },
     { id: 'English & Creative Writing', label: isBangla ? 'ইংরেজি' : 'English & Creative Writing' },
@@ -103,28 +104,20 @@ export const Teachers: React.FC = () => {
 
   const filteredTeachers = selectedSubject === 'All'
     ? teachersList
-    : teachersList.filter(t => t.subject.toLowerCase().includes(selectedSubject.toLowerCase()) || t.specialty.toLowerCase().includes(selectedSubject.toLowerCase()));
+    : teachersList.filter(t => 
+        t.subject.toLowerCase().includes(selectedSubject.toLowerCase()) || 
+        t.specialty.toLowerCase().includes(selectedSubject.toLowerCase()) ||
+        (selectedSubject.toLowerCase() === 'director' && (
+          t.experience.toLowerCase().includes('director') ||
+          t.name.toLowerCase().includes('director') ||
+          t.shortBio.toLowerCase().includes('director')
+        ))
+      );
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20">
-      {/* Page Header */}
-      <section className="bg-gradient-to-b from-maroon-50/70 via-slate-50 to-white py-16 sm:py-20 border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-maroon-100/80 text-maroon-800 text-xs font-bold uppercase tracking-wider mb-4 border border-maroon-200">
-            <Users className="w-3.5 h-3.5" />
-            <span>{t('teachers.badge')}</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-            {t('teachers.title')}
-          </h1>
-          <p className="mt-4 text-base sm:text-lg text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            {t('teachers.subtitle')}
-          </p>
-        </div>
-      </section>
-
+    <div className="min-h-screen bg-slate-50/50 pb-20 pt-8 sm:pt-10">
       {/* Sliding Subject Filter Pills */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
         <div className="relative flex items-center bg-white/60 p-2 sm:p-2.5 rounded-2xl border border-slate-200/80 shadow-xs">
           
           {/* Left Slide Arrow */}

@@ -9,6 +9,7 @@ import {
   initialAdminFaculty,
   initialAdminNotices,
   initialAdminRoutines,
+  initialAdminClassRoutines,
   AdminStudent,
   AdminExamResult,
   AdminInvoice,
@@ -17,15 +18,22 @@ import {
   AdminFaculty,
   AdminNotice,
   AdminRoutine,
+  AdminClassRoutine,
+  createClassRoutineSvg,
+  normalizeClass,
+  isClassMatching,
   NoticeCategory,
   NoticePriority,
   NoticeTarget,
   WeekDay,
 } from '../data/adminData';
+import { StudentResult } from '../types';
+import { resultsData } from '../data/results';
 import {
   LayoutDashboard,
   Users,
   Award,
+  Trophy,
   CreditCard,
   UserCheck,
   Calendar,
@@ -58,6 +66,9 @@ import {
   Upload,
   Camera,
   Image as ImageIcon,
+  FileText,
+  Eye,
+  ZoomIn,
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -80,6 +91,16 @@ export const AdminPortal: React.FC = () => {
   const [results, setResults] = useState<AdminExamResult[]>(() => {
     const saved = localStorage.getItem('pschye_admin_results');
     return saved ? JSON.parse(saved) : initialAdminResults;
+  });
+
+  // Public Results & Success Showcase (directly feeds /results page and Homepage)
+  const [publicResults, setPublicResults] = useState<StudentResult[]>(() => {
+    try {
+      const saved = localStorage.getItem('psyche_public_results');
+      return saved ? JSON.parse(saved) : resultsData;
+    } catch {
+      return resultsData;
+    }
   });
 
   const [invoices, setInvoices] = useState<AdminInvoice[]>(() => {
@@ -137,6 +158,15 @@ export const AdminPortal: React.FC = () => {
     return saved ? JSON.parse(saved) : initialAdminRoutines;
   });
 
+  const [classRoutines, setClassRoutines] = useState<AdminClassRoutine[]>(() => {
+    try {
+      const saved = localStorage.getItem('pschye_class_routines');
+      return saved ? JSON.parse(saved) : initialAdminClassRoutines;
+    } catch {
+      return initialAdminClassRoutines;
+    }
+  });
+
   // Navigation tab
   const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'results' | 'fees' | 'admissions' | 'batches' | 'faculty' | 'notices' | 'routine'>('overview');
 
@@ -155,6 +185,11 @@ export const AdminPortal: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('pschye_admin_results', JSON.stringify(results));
   }, [results]);
+
+  useEffect(() => {
+    localStorage.setItem('psyche_public_results', JSON.stringify(publicResults));
+    window.dispatchEvent(new Event('resultsUpdate'));
+  }, [publicResults]);
 
   useEffect(() => {
     localStorage.setItem('pschye_admin_invoices', JSON.stringify(invoices));
@@ -179,6 +214,11 @@ export const AdminPortal: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('pschye_admin_routines', JSON.stringify(routines));
   }, [routines]);
+
+  useEffect(() => {
+    localStorage.setItem('pschye_class_routines', JSON.stringify(classRoutines));
+    window.dispatchEvent(new Event('classRoutinesUpdate'));
+  }, [classRoutines]);
 
   // Auth sync
   useEffect(() => {
@@ -303,6 +343,96 @@ export const AdminPortal: React.FC = () => {
     setShowAddResultModal(false);
     showToast(`Published exam score for ${student?.name || newResult.studentId}`);
   };
+
+  // ================= PUBLIC RESULTS & SUCCESS SHOWCASE (FOR /results PAGE) =================
+  const [resultsSubTab, setResultsSubTab] = useState<'public' | 'internal'>('public');
+  const [publicResultSearch, setPublicResultSearch] = useState('');
+  const [publicResultYearFilter, setPublicResultYearFilter] = useState('All');
+  const [publicResultExamTypeFilter, setPublicResultExamTypeFilter] = useState('All');
+  const [showAddPublicResultModal, setShowAddPublicResultModal] = useState(false);
+  const [publicResultPhotoPreview, setPublicResultPhotoPreview] = useState('');
+  const [newPublicResult, setNewPublicResult] = useState<Omit<StudentResult, 'id'>>({
+    studentName: '',
+    studentClass: 'HSC Examination',
+    gpa: 'GPA 5.00 (Golden)',
+    marks: '1180 / 1200',
+    year: 2026,
+    position: '',
+    institution: '',
+    examType: 'HSC Science',
+    photo: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=500&q=80',
+    testimonial: ''
+  });
+
+  const handlePublicResultPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert(isBangla ? 'ছবির আকার সর্বোচ্চ ২ মেগাবাইট হতে হবে' : 'Image size must be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const base64 = ev.target?.result as string;
+        setNewPublicResult(prev => ({ ...prev, photo: base64 }));
+        setPublicResultPhotoPreview(base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCreatePublicResult = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPublicResult.studentName.trim() || !newPublicResult.position.trim()) {
+      alert(isBangla ? 'শিক্ষার্থীর নাম এবং অর্জিত স্থান/মেধাক্রম প্রদান করুন।' : 'Please provide student name and merit position.');
+      return;
+    }
+    const created: StudentResult = {
+      ...newPublicResult,
+      id: `res-${Date.now()}`,
+      studentName: newPublicResult.studentName.trim(),
+      position: newPublicResult.position.trim(),
+      institution: newPublicResult.institution.trim() || 'Psyche Academic Care',
+      photo: newPublicResult.photo || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=500&q=80',
+      year: Number(newPublicResult.year) || 2026
+    };
+    setPublicResults(prev => [created, ...prev]);
+    setShowAddPublicResultModal(false);
+    setNewPublicResult({
+      studentName: '',
+      studentClass: 'HSC Examination',
+      gpa: 'GPA 5.00 (Golden)',
+      marks: '1180 / 1200',
+      year: 2026,
+      position: '',
+      institution: '',
+      examType: 'HSC Science',
+      photo: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=500&q=80',
+      testimonial: ''
+    });
+    setPublicResultPhotoPreview('');
+    showToast(isBangla ? 'কৃতী শিক্ষার্থীর ফলাফল সফলভাবে ওয়েবসাইটে প্রকাশিত হয়েছে!' : 'Student result published to website!');
+  };
+
+  const handleDeletePublicResult = (id: string) => {
+    if (window.confirm(isBangla ? 'আপনি কি নিশ্চিত যে এই ফলাফলটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this result?')) {
+      setPublicResults(prev => prev.filter(r => r.id !== id));
+      showToast(isBangla ? 'ফলাফল সফলভাবে মুছে ফেলা হয়েছে।' : 'Result removed successfully.');
+    }
+  };
+
+  const publicResultYears = Array.from(new Set(publicResults.map(r => r.year.toString()))).sort((a, b) => Number(b) - Number(a));
+
+  const filteredPublicResults = publicResults.filter(r => {
+    const matchesSearch = 
+      r.studentName.toLowerCase().includes(publicResultSearch.toLowerCase()) ||
+      r.institution.toLowerCase().includes(publicResultSearch.toLowerCase()) ||
+      r.position.toLowerCase().includes(publicResultSearch.toLowerCase()) ||
+      r.studentClass.toLowerCase().includes(publicResultSearch.toLowerCase());
+    const matchesYear = publicResultYearFilter === 'All' || r.year.toString() === publicResultYearFilter;
+    const matchesType = publicResultExamTypeFilter === 'All' || r.examType === publicResultExamTypeFilter;
+    return matchesSearch && matchesYear && matchesType;
+  });
 
   // Add Fee Invoice Modal
   const [showAddInvoiceModal, setShowAddInvoiceModal] = useState(false);
@@ -541,6 +671,111 @@ export const AdminPortal: React.FC = () => {
 
   const filteredRoutine = routines.find(r => r.batchName === routineBatchFilter);
 
+  // ─── CLASS ROUTINE (IMAGE / PDF) STATE & HANDLERS ─────────────────────────
+  const [routineViewMode, setRoutineViewMode] = useState<'files' | 'slots'>('files');
+  const [routineClassFilter, setRoutineClassFilter] = useState<string>('All');
+  const [routineFileTypeFilter, setRoutineFileTypeFilter] = useState<'All' | 'image' | 'pdf'>('All');
+  const [showUploadRoutineModal, setShowUploadRoutineModal] = useState(false);
+  const [previewRoutineModal, setPreviewRoutineModal] = useState<AdminClassRoutine | null>(null);
+
+  const [uploadRoutineForm, setUploadRoutineForm] = useState({
+    title: '',
+    targetClass: 'Class 8',
+    fileType: 'image' as 'image' | 'pdf',
+    fileName: '',
+    fileSize: '',
+    fileUrl: '',
+    effectiveDate: '',
+    notes: '',
+  });
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const detectedType: 'image' | 'pdf' = isPdf ? 'pdf' : 'image';
+    const sizeStr = file.size > 1024 * 1024 
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
+      : `${Math.round(file.size / 1024)} KB`;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setUploadRoutineForm(prev => ({
+        ...prev,
+        fileType: detectedType,
+        fileName: file.name,
+        fileSize: sizeStr,
+        fileUrl: result,
+        title: prev.title || `${prev.targetClass} Routine (${file.name.replace(/\.[^/.]+$/, '')})`,
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGenerateSampleRoutine = () => {
+    const cls = uploadRoutineForm.targetClass || 'Class 8';
+    const sampleSvg = createClassRoutineSvg(cls, `${cls} OFFICIAL ACADEMIC ROUTINE 2026`);
+    setUploadRoutineForm(prev => ({
+      ...prev,
+      fileName: `${cls.replace(/\s+/g, '-')}-Official-Routine.png`,
+      fileSize: '450 KB',
+      fileUrl: sampleSvg,
+      title: prev.title || `${cls} Official Academic Schedule 2026`,
+    }));
+  };
+
+  const handleSaveClassRoutine = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadRoutineForm.title.trim()) {
+      showToast(isBangla ? 'অনুগ্রহ করে রুটিনের শিরোনাম লিখুন।' : 'Please enter a routine title.');
+      return;
+    }
+
+    const fileUrl = uploadRoutineForm.fileUrl || createClassRoutineSvg(uploadRoutineForm.targetClass, uploadRoutineForm.title);
+    const fileName = uploadRoutineForm.fileName || `${uploadRoutineForm.targetClass}-Routine.${uploadRoutineForm.fileType === 'pdf' ? 'pdf' : 'png'}`;
+    const fileSize = uploadRoutineForm.fileSize || (uploadRoutineForm.fileType === 'pdf' ? '1.1 MB' : '450 KB');
+
+    const newRoutine: AdminClassRoutine = {
+      id: `rtn-${Date.now()}`,
+      title: uploadRoutineForm.title.trim(),
+      targetClass: uploadRoutineForm.targetClass,
+      fileType: uploadRoutineForm.fileType,
+      fileUrl,
+      fileName,
+      fileSize,
+      effectiveDate: uploadRoutineForm.effectiveDate || 'Immediate',
+      uploadedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+      notes: uploadRoutineForm.notes.trim(),
+    };
+
+    setClassRoutines(prev => [newRoutine, ...prev]);
+    setShowUploadRoutineModal(false);
+    setUploadRoutineForm({
+      title: '',
+      targetClass: 'Class 8',
+      fileType: 'image',
+      fileName: '',
+      fileSize: '',
+      fileUrl: '',
+      effectiveDate: '',
+      notes: '',
+    });
+    showToast(isBangla ? `${newRoutine.targetClass}-এর রুটিন সফলভাবে আপলোড হয়েছে!` : `Routine for ${newRoutine.targetClass} uploaded successfully!`);
+  };
+
+  const handleDeleteClassRoutine = (id: string, title: string) => {
+    setClassRoutines(prev => prev.filter(r => r.id !== id));
+    showToast(isBangla ? 'রুটিন মুছে ফেলা হয়েছে।' : `Routine "${title}" deleted.`);
+  };
+
+  const filteredClassRoutines = classRoutines.filter(r => {
+    const matchesClass = routineClassFilter === 'All' || isClassMatching(routineClassFilter, r.targetClass);
+    const matchesType = routineFileTypeFilter === 'All' || r.fileType === routineFileTypeFilter;
+    return matchesClass && matchesType;
+  });
+
   // Search & Filter queries
   const [studentSearch, setStudentSearch] = useState('');
   const [studentBatchFilter, setStudentBatchFilter] = useState('All');
@@ -691,7 +926,7 @@ export const AdminPortal: React.FC = () => {
           {[
             { id: 'overview', name: isBangla ? 'ড্যাশবোর্ড' : 'Dashboard', icon: LayoutDashboard },
             { id: 'students', name: isBangla ? 'শিক্ষার্থী' : 'Students', icon: Users, count: totalStudents },
-            { id: 'results', name: isBangla ? 'পরীক্ষার ফলাফল' : 'Exam Results', icon: Award, count: results.length },
+            { id: 'results', name: isBangla ? 'ফলাফল ও সাফল্য' : 'Results & Success', icon: Trophy, count: publicResults.length + results.length },
             { id: 'fees', name: isBangla ? 'ফি ও হিসাব' : 'Fees', icon: CreditCard },
             { id: 'admissions', name: isBangla ? 'ভর্তি আবেদন' : 'Admissions', icon: UserCheck, count: pendingApps, badgeColor: 'bg-rose-700 text-white' },
             { id: 'batches', name: isBangla ? 'ব্যাচ' : 'Batches', icon: Calendar, count: batches.length },
@@ -1106,80 +1341,289 @@ export const AdminPortal: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 3: EXAM RESULTS */}
+        {/* TAB 3: RESULTS & SUCCESS */}
         {activeTab === 'results' && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6 animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  {isBangla ? 'পরীক্ষার ফলাফল ও নম্বর ব্যবস্থাপনা' : 'Exam Results & Marks Management'}
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {isBangla ? 'মডেল টেস্ট, CQ/MCQ মূল্যায়ন এবং গ্রেডিং কার্ড সংরক্ষণ' : 'Record model tests, CQ/MCQ assessments, and grading cards'}
-                </p>
+            {/* View Switcher: Public Results & Success (কৃতী শিক্ষার্থী) vs Internal Exam Marks */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setResultsSubTab('public')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    resultsSubTab === 'public'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  <Trophy className={`w-4 h-4 ${resultsSubTab === 'public' ? 'text-amber-300' : 'text-amber-500'}`} />
+                  <span>{isBangla ? 'পাবলিক কৃতী শিক্ষার্থী (Results & Success Showcase)' : 'Public Results & Success Showcase'}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${resultsSubTab === 'public' ? 'bg-maroon-900 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                    {publicResults.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setResultsSubTab('internal')}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    resultsSubTab === 'internal'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  <Award className="w-4 h-4" />
+                  <span>{isBangla ? 'অভ্যন্তরীণ মডেল টেস্ট নম্বর (Student Scorecards)' : 'Internal Model Test Scorecards'}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${resultsSubTab === 'internal' ? 'bg-maroon-900 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                    {results.length}
+                  </span>
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowAddResultModal(true)}
-                className="px-4 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{isBangla ? 'পরীক্ষার ফলাফল প্রকাশ' : 'Publish Exam Result'}</span>
-              </button>
+              {resultsSubTab === 'public' && (
+                <Link
+                  to="/results"
+                  target="_blank"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-maroon-800 hover:border-maroon-300 text-xs font-bold transition-colors shadow-2xs"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-maroon-600" />
+                  <span>{isBangla ? 'পাবলিক Results পেজ দেখুন' : 'View Public Results Page'}</span>
+                </Link>
+              )}
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3">{isBangla ? 'শিক্ষার্থীর নাম ও আইডি' : 'Student Name & ID'}</th>
-                    <th className="px-4 py-3">{isBangla ? 'পরীক্ষার নাম' : 'Exam Title'}</th>
-                    <th className="px-4 py-3">{isBangla ? 'বিষয়' : 'Subject'}</th>
-                    <th className="px-4 py-3">{isBangla ? 'প্রাপ্ত নম্বর' : 'Marks Obtained'}</th>
-                    <th className="px-4 py-3">{isBangla ? 'জিপিএ ও গ্রেড' : 'GPA & Grade'}</th>
-                    <th className="px-4 py-3">{isBangla ? 'মন্তব্য' : 'Remarks'}</th>
-                    <th className="px-4 py-3 text-right">{isBangla ? 'অ্যাকশন' : 'Action'}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {results.map(res => (
-                    <tr key={res.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-slate-900">{res.studentName}</div>
-                        <div className="text-[11px] text-slate-500">{res.studentId} • {res.batch}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-800">{res.examName}</div>
-                        <div className="text-[11px] text-slate-400">{res.date}</div>
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-maroon-800">{res.subject}</td>
-                      <td className="px-4 py-3">
-                        <strong className="text-slate-900">{res.marksObtained}</strong> / {res.totalMarks}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 rounded-md font-extrabold bg-rose-50 text-maroon-800 border border-rose-200">
-                          {res.grade} ({res.gpa.toFixed(1)})
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 max-w-xs truncate">
-                        {res.remarks}
-                      </td>
-                      <td className="px-4 py-3 text-right">
+            {/* SUB-VIEW 1: PUBLIC RESULTS & SUCCESS SHOWCASE */}
+            {resultsSubTab === 'public' && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                      <Trophy className="w-5 h-5 text-amber-500" />
+                      <span>{isBangla ? 'কৃতী শিক্ষার্থী ও পাবলিক ফলাফল ব্যবস্থাপনা' : 'Public Results & Success Stories'}</span>
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {isBangla
+                        ? 'ওয়েবসাইটের "Results & Success" পৃষ্ঠায় প্রদর্শিত শিক্ষার্থীদের বোর্ড মেধা তালিকা ও বিশ্ববিদ্যালয় ভর্তি রেকর্ড'
+                        : 'Manage board toppers, entrance placements, and success records shown on the public "Results & Success" page'}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPublicResultModal(true)}
+                    className="px-4 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{isBangla ? 'নতুন কৃতী শিক্ষার্থী যোগ করুন' : 'Add Success Result'}</span>
+                  </button>
+                </div>
+
+                {/* Filter & Search Bar */}
+                <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-slate-50/60 p-3 rounded-2xl border border-slate-200 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    {/* Year Filter */}
+                    <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setPublicResultYearFilter('All')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+                          publicResultYearFilter === 'All' ? 'bg-maroon-800 text-white' : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {isBangla ? 'সব বছর' : 'All Years'}
+                      </button>
+                      {publicResultYears.map(yr => (
                         <button
+                          key={yr}
                           type="button"
-                          onClick={() => handleDeleteResult(res.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title={isBangla ? 'মুছে ফেলুন' : 'Delete Result'}
+                          onClick={() => setPublicResultYearFilter(yr)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+                            publicResultYearFilter === yr ? 'bg-maroon-800 text-white' : 'text-slate-600 hover:text-slate-900'
+                          }`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {yr}
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      ))}
+                    </div>
+
+                    {/* Exam Type Selector */}
+                    <select
+                      value={publicResultExamTypeFilter}
+                      onChange={e => setPublicResultExamTypeFilter(e.target.value)}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-maroon-100"
+                    >
+                      <option value="All">{isBangla ? 'সকল ক্যাটাগরি' : 'All Categories'}</option>
+                      <option value="SSC Science">SSC Science</option>
+                      <option value="HSC Science">HSC Science</option>
+                      <option value="HSC Commerce">HSC Commerce</option>
+                      <option value="Medical Entrance">Medical Entrance</option>
+                      <option value="Engineering Entrance">Engineering Entrance</option>
+                    </select>
+                  </div>
+
+                  {/* Search input */}
+                  <div className="relative w-full md:w-64">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder={isBangla ? 'নাম, প্রতিষ্ঠান বা অবস্থান খুঁজুন...' : 'Search student or college...'}
+                      value={publicResultSearch}
+                      onChange={e => setPublicResultSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-maroon-100"
+                    />
+                  </div>
+                </div>
+
+                {/* Table of Public Results */}
+                <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3">{isBangla ? 'শিক্ষার্থী' : 'Student'}</th>
+                        <th className="px-4 py-3">{isBangla ? 'অর্জিত স্থান / সাফল্য' : 'Merit / Position'}</th>
+                        <th className="px-4 py-3">{isBangla ? 'প্রতিষ্ঠান' : 'Institution'}</th>
+                        <th className="px-4 py-3">{isBangla ? 'জিপিএ ও নম্বর' : 'GPA & Marks'}</th>
+                        <th className="px-4 py-3">{isBangla ? 'ক্যাটাগরি ও বছর' : 'Exam & Year'}</th>
+                        <th className="px-4 py-3">{isBangla ? 'প্রতিক্রিয়া' : 'Testimonial'}</th>
+                        <th className="px-4 py-3 text-right">{isBangla ? 'অ্যাকশন' : 'Action'}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {filteredPublicResults.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                            {isBangla ? 'কোনো ফলাফল পাওয়া যায়নি' : 'No results matching criteria'}
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredPublicResults.map(res => (
+                          <tr key={res.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={res.photo}
+                                  alt={res.studentName}
+                                  className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
+                                />
+                                <div>
+                                  <div className="font-bold text-slate-900">{res.studentName}</div>
+                                  <div className="text-[11px] text-slate-500">{res.studentClass}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center gap-1 font-bold text-maroon-800 bg-maroon-50 border border-maroon-200 px-2 py-0.5 rounded-md text-[11px]">
+                                <Trophy className="w-3 h-3 text-amber-500" />
+                                <span>{res.position}</span>
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-700 font-semibold">{res.institution}</td>
+                            <td className="px-4 py-3">
+                              <div className="font-bold text-slate-900">{res.gpa}</div>
+                              <div className="text-[11px] text-slate-500">{res.marks}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="font-semibold text-slate-800">{res.examType}</span>
+                              <div className="text-[11px] text-slate-500">{res.year}</div>
+                            </td>
+                            <td className="px-4 py-3 text-slate-500 max-w-xs truncate italic">
+                              {res.testimonial ? `"${res.testimonial}"` : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePublicResult(res.id)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title={isBangla ? 'মুছে ফেলুন' : 'Delete'}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-VIEW 2: INTERNAL STUDENT MODEL TEST SCORECARDS */}
+            {resultsSubTab === 'internal' && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">
+                      {isBangla ? 'অভ্যন্তরীণ পরীক্ষার নম্বর ও গ্রেডিং' : 'Internal Exam Results & Marks'}
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {isBangla ? 'শিক্ষার্থীদের মডেল টেস্ট, CQ/MCQ মূল্যায়ন এবং রিপোর্ট কার্ড সংরক্ষণ' : 'Record internal tests and student scorecard progress'}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAddResultModal(true)}
+                    className="px-4 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{isBangla ? 'পরীক্ষার ফলাফল প্রকাশ' : 'Publish Exam Result'}</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3">{isBangla ? 'শিক্ষার্থীর নাম ও আইডি' : 'Student Name & ID'}</th>
+                        <th className="px-4 py-3">{isBangla ? 'পরীক্ষার নাম' : 'Exam Title'}</th>
+                        <th className="px-4 py-3">{isBangla ? 'বিষয়' : 'Subject'}</th>
+                        <th className="px-4 py-3">{isBangla ? 'প্রাপ্ত নম্বর' : 'Marks Obtained'}</th>
+                        <th className="px-4 py-3">{isBangla ? 'জিপিএ ও গ্রেড' : 'GPA & Grade'}</th>
+                        <th className="px-4 py-3">{isBangla ? 'মন্তব্য' : 'Remarks'}</th>
+                        <th className="px-4 py-3 text-right">{isBangla ? 'অ্যাকশন' : 'Action'}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {results.map(res => (
+                        <tr key={res.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-slate-900">{res.studentName}</div>
+                            <div className="text-[11px] text-slate-500">{res.studentId} • {res.batch}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-slate-800">{res.examName}</div>
+                            <div className="text-[11px] text-slate-400">{res.date}</div>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-maroon-800">{res.subject}</td>
+                          <td className="px-4 py-3">
+                            <strong className="text-slate-900">{res.marksObtained}</strong> / {res.totalMarks}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="px-2 py-0.5 rounded-md font-extrabold bg-rose-50 text-maroon-800 border border-rose-200">
+                              {res.grade} ({res.gpa.toFixed(1)})
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-600 max-w-xs truncate">
+                            {res.remarks}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteResult(res.id)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title={isBangla ? 'মুছে ফেলুন' : 'Delete Result'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1332,12 +1776,18 @@ export const AdminPortal: React.FC = () => {
                       <strong className="text-slate-800">{app.course}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 block font-semibold">{isBangla ? 'পূর্ববর্তী প্রতিষ্ঠান:' : 'Previous School:'}</span>
-                      <strong className="text-slate-800">{app.previousSchool || (isBangla ? 'উল্লেখ নেই' : 'Not Specified')}</strong>
+                      <span className="text-slate-400 block font-semibold">{isBangla ? 'প্রতিষ্ঠান ও রোল:' : 'School & Roll:'}</span>
+                      <strong className="text-slate-800">
+                        {app.previousSchool || (isBangla ? 'উল্লেখ নেই' : 'Not Specified')}
+                        {app.schoolRoll ? ` (${isBangla ? 'রোল:' : 'Roll:'} ${app.schoolRoll})` : ''}
+                      </strong>
                     </div>
                     <div>
                       <span className="text-slate-400 block font-semibold">{isBangla ? 'অভিভাবক ও যোগাযোগ:' : 'Guardian & Contact:'}</span>
-                      <strong className="text-slate-800">{app.fatherName} ({app.phone})</strong>
+                      <strong className="text-slate-800">
+                        {app.fatherName} ({app.phone})
+                        {app.whatsappName ? ` • WA: ${app.whatsappName}` : ''}
+                      </strong>
                     </div>
                   </div>
                 </div>
@@ -1560,59 +2010,314 @@ export const AdminPortal: React.FC = () => {
         {/* TAB 9: CLASS ROUTINE */}
         {activeTab === 'routine' && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            {/* Top Overview & Action Card */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">{isBangla ? 'ক্লাস রুটিন ব্যবস্থাপনা' : 'Class Routine Management'}</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">{isBangla ? 'ব্যাচ অনুযায়ী সাপ্তাহিক ক্লাস সময়সূচি তৈরি ও পরিচালনা' : 'Create and manage weekly class schedules per batch'}</p>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-maroon-50 border border-maroon-200 text-maroon-800 text-xs font-bold uppercase tracking-wider mb-2">
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    <span>{isBangla ? 'শ্রেণীভিত্তিক ক্লাস রুটিন ব্যবস্থাপনা' : 'Class-Targeted Routine Hub'}</span>
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                    {isBangla ? 'ক্লাস রুটিন (Image / PDF)' : 'Class Routine Management'}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                    {isBangla 
+                      ? 'এখানে আপলোড করা ইমেজ বা পিডিএফ রুটিন শুধুমাত্র নির্দিষ্ট ক্লাসের শিক্ষার্থীদের পোর্টালে যাবে (যেমন: Class 8-এর রুটিন শুধু Class 8 এর স্টুডেন্টরা দেখতে ও ডাউনলোড করতে পারবে)।'
+                      : 'Upload image or PDF routines targeted per class — only enrolled students of that specific class (e.g. Class 8) will see and download them.'}
+                  </p>
                 </div>
-                <button type="button" onClick={() => setShowAddRoutineModal(true)} className="px-4 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer">
-                  <Plus className="w-4 h-4" /><span>{isBangla ? 'নতুন ক্লাস স্লট যোগ করুন' : 'Add Class Slot'}</span>
-                </button>
-              </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {batches.map(b => (
-                  <button key={b.id} onClick={() => setRoutineBatchFilter(b.name)} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${routineBatchFilter === b.name ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{b.name}</button>
-                ))}
-              </div>
-              <div className="mt-5">
-                {!filteredRoutine || filteredRoutine.slots.length === 0 ? (
-                  <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-2xl">
-                    {isBangla ? 'এই ব্যাচের জন্য কোনো ক্লাস স্লট নেই।' : 'No class slots found for this batch.'}
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="p-1 rounded-xl bg-slate-100 border border-slate-200 flex items-center gap-1 text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setRoutineViewMode('files')}
+                      className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                        routineViewMode === 'files' ? 'bg-white shadow-xs text-maroon-800' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {isBangla ? 'রুটিন ফাইল (Image/PDF)' : 'Routine Files (Image/PDF)'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRoutineViewMode('slots')}
+                      className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                        routineViewMode === 'slots' ? 'bg-white shadow-xs text-maroon-800' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {isBangla ? 'সাপ্তাহিক স্লট শিডিউল' : 'Weekly Slot Schedule'}
+                    </button>
                   </div>
-                ) : (
-                  <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
-                        <tr>
-                          <th className="px-4 py-3">{isBangla ? 'বার' : 'Day'}</th>
-                          <th className="px-4 py-3">{isBangla ? 'সময়' : 'Time'}</th>
-                          <th className="px-4 py-3">{isBangla ? 'বিষয়' : 'Subject'}</th>
-                          <th className="px-4 py-3">{isBangla ? 'শিক্ষক' : 'Teacher'}</th>
-                          <th className="px-4 py-3">{isBangla ? 'কক্ষ' : 'Room'}</th>
-                          <th className="px-4 py-3 text-right">{isBangla ? 'অ্যাকশন' : 'Action'}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-medium">
-                        {['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'].flatMap(day =>
-                          (filteredRoutine?.slots ?? []).filter(sl => sl.day === day).map(sl => (
-                            <tr key={sl.id} className="hover:bg-slate-50/80 transition-colors">
-                              <td className="px-4 py-3"><span className="px-2 py-1 rounded-lg text-[10px] font-black bg-maroon-50 text-maroon-800 border border-rose-100">{sl.day}</span></td>
-                              <td className="px-4 py-3 text-slate-700 whitespace-nowrap"><span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" />{sl.time}</span></td>
-                              <td className="px-4 py-3 font-bold text-slate-900">{sl.subject}</td>
-                              <td className="px-4 py-3 text-slate-600">{sl.teacher}</td>
-                              <td className="px-4 py-3 text-slate-500">{sl.room}</td>
-                              <td className="px-4 py-3 text-right">
-                                <button type="button" onClick={() => handleDeleteRoutineSlot(filteredRoutine!.batchName, sl.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"><Trash2 className="w-4 h-4" /></button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+
+                  {routineViewMode === 'files' ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowUploadRoutineModal(true)}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-maroon-800 to-rose-700 hover:from-maroon-900 hover:to-rose-800 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>{isBangla ? 'নতুন রুটিন আপলোড করুন' : 'Upload New Routine'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddRoutineModal(true)}
+                      className="px-4 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{isBangla ? 'নতুন ক্লাস স্লট যোগ করুন' : 'Add Class Slot'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* VIEW MODE 1: CLASS ROUTINE FILES (IMAGE / PDF) */}
+              {routineViewMode === 'files' && (
+                <div className="space-y-6">
+                  {/* Filters: By Class and By File Type */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        {isBangla ? 'শ্রেণী অনুযায়ী ফিল্টার করুন:' : 'Filter by Class:'}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['All', 'Class 8', 'Class 9 (Science)', 'Class 9 (Commerce)', 'Class 10 (Science)', 'Class 10 (Commerce)', 'SSC Special Batch', 'HSC (Science)', 'HSC (Commerce)'].map(cls => (
+                          <button
+                            key={cls}
+                            type="button"
+                            onClick={() => setRoutineClassFilter(cls)}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              routineClassFilter === cls 
+                                ? 'bg-maroon-800 text-white shadow-xs' 
+                                : 'bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200'
+                            }`}
+                          >
+                            {cls === 'All' ? (isBangla ? 'সকল ব্যাচ' : 'All Classes') : cls}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 sm:text-right shrink-0">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        {isBangla ? 'ফরম্যাট:' : 'Format:'}
+                      </span>
+                      <div className="flex items-center gap-1.5 justify-start sm:justify-end">
+                        {(['All', 'image', 'pdf'] as const).map(type => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => setRoutineFileTypeFilter(type)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              routineFileTypeFilter === type 
+                                ? 'bg-slate-900 text-white' 
+                                : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'
+                            }`}
+                          >
+                            {type === 'All' ? (isBangla ? 'সকল' : 'All') : type === 'image' ? (isBangla ? '🖼️ ছবি' : '🖼️ Image') : (isBangla ? '📄 PDF' : '📄 PDF')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Routine Cards Grid */}
+                  {filteredClassRoutines.length === 0 ? (
+                    <div className="text-center py-16 px-4 bg-slate-50/50 rounded-3xl border border-dashed border-slate-300 space-y-3">
+                      <div className="w-14 h-14 rounded-2xl bg-white shadow-xs border border-slate-200 flex items-center justify-center text-slate-400 mx-auto">
+                        <CalendarDays className="w-7 h-7 text-slate-400" />
+                      </div>
+                      <h4 className="text-base font-bold text-slate-800">
+                        {isBangla ? 'এই নির্বাচনের জন্য কোনো রুটিন পাওয়া যায়নি' : 'No Routines Found'}
+                      </h4>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                        {isBangla 
+                          ? 'নতুন রুটিন আপলোড করতে উপরের "নতুন রুটিন আপলোড করুন" বাটনে ক্লিক করুন।'
+                          : 'Click the "Upload New Routine" button to publish an image or PDF schedule for this class.'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowUploadRoutineModal(true)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-maroon-800 text-white text-xs font-bold hover:bg-maroon-900 transition-colors shadow-xs cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{isBangla ? 'নতুন রুটিন যোগ করুন' : 'Add Routine Now'}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {filteredClassRoutines.map(routine => (
+                        <div
+                          key={routine.id}
+                          className="bg-white rounded-3xl border border-slate-200 hover:border-maroon-300 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
+                        >
+                          <div>
+                            {/* Card Header & Badges */}
+                            <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-2 bg-gradient-to-r from-slate-50 to-white">
+                              <span className="px-3 py-1 rounded-full text-xs font-black bg-maroon-100 text-maroon-900 border border-maroon-200 flex items-center gap-1.5">
+                                <GraduationCap className="w-3.5 h-3.5 text-maroon-800" />
+                                {routine.targetClass}
+                              </span>
+
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
+                                routine.fileType === 'pdf' 
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
+                                {routine.fileType === 'pdf' ? '📄 PDF Document' : '🖼️ Image'}
+                              </span>
+                            </div>
+
+                            {/* Preview Area */}
+                            <div 
+                              onClick={() => setPreviewRoutineModal(routine)}
+                              className="relative h-44 bg-slate-100 cursor-pointer overflow-hidden flex items-center justify-center group/preview border-b border-slate-100"
+                            >
+                              {routine.fileType === 'image' || routine.fileUrl.startsWith('data:image') ? (
+                                <img
+                                  src={routine.fileUrl}
+                                  alt={routine.title}
+                                  className="w-full h-full object-cover object-top transition-transform duration-300 group-hover/preview:scale-105"
+                                />
+                              ) : (
+                                <div className="p-6 text-center space-y-2">
+                                  <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mx-auto shadow-xs">
+                                    <FileText className="w-7 h-7" />
+                                  </div>
+                                  <div className="text-xs font-bold text-slate-800 line-clamp-1">{routine.fileName}</div>
+                                  <span className="text-[11px] text-slate-500 font-medium">{routine.fileSize || 'PDF Document'}</span>
+                                </div>
+                              )}
+
+                              {/* Hover Overlay */}
+                              <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-2xs">
+                                <span className="px-3 py-1.5 rounded-xl bg-white/95 text-slate-900 text-xs font-bold shadow-md flex items-center gap-1.5">
+                                  <ZoomIn className="w-3.5 h-3.5 text-maroon-800" />
+                                  <span>{isBangla ? 'বড় করে দেখুন' : 'Full Preview'}</span>
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Card Content Info */}
+                            <div className="p-4 space-y-2">
+                              <h3 className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
+                                {routine.title}
+                              </h3>
+
+                              <div className="space-y-1 text-xs text-slate-500">
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span>{isBangla ? 'আপলোড:' : 'Uploaded:'} <strong className="text-slate-700">{routine.uploadedAt}</strong></span>
+                                  {routine.fileSize && <span>{routine.fileSize}</span>}
+                                </div>
+                                {routine.effectiveDate && (
+                                  <div className="text-[11px] text-maroon-800 font-semibold">
+                                    {isBangla ? `কার্যকর: ${routine.effectiveDate}` : `Effective: ${routine.effectiveDate}`}
+                                  </div>
+                                )}
+                                {routine.notes && (
+                                  <p className="text-[11px] text-slate-600 line-clamp-2 italic pt-1 border-t border-slate-100">
+                                    "{routine.notes}"
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Card Footer Actions */}
+                          <div className="p-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewRoutineModal(routine)}
+                              className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-maroon-800" />
+                              <span>{isBangla ? 'দেখুন' : 'View'}</span>
+                            </button>
+
+                            <div className="flex items-center gap-1.5">
+                              <a
+                                href={routine.fileUrl}
+                                download={routine.fileName || `${routine.targetClass}-routine.${routine.fileType === 'pdf' ? 'pdf' : 'png'}`}
+                                className="p-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-maroon-800 transition-colors cursor-pointer"
+                                title={isBangla ? 'ডাউনলোড করুন' : 'Download file'}
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteClassRoutine(routine.id, routine.title)}
+                                className="p-1.5 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                title={isBangla ? 'রুটিন মুছুন' : 'Delete routine'}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* VIEW MODE 2: WEEKLY SLOT SCHEDULE TABLE */}
+              {routineViewMode === 'slots' && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {batches.map(b => (
+                      <button 
+                        key={b.id} 
+                        onClick={() => setRoutineBatchFilter(b.name)} 
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          routineBatchFilter === b.name ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {b.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  {!filteredRoutine || filteredRoutine.slots.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-2xl">
+                      {isBangla ? 'এই ব্যাচের জন্য কোনো ক্লাস স্লট নেই।' : 'No class slots found for this batch.'}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
+                          <tr>
+                            <th className="px-4 py-3">{isBangla ? 'বার' : 'Day'}</th>
+                            <th className="px-4 py-3">{isBangla ? 'সময়' : 'Time'}</th>
+                            <th className="px-4 py-3">{isBangla ? 'বিষয়' : 'Subject'}</th>
+                            <th className="px-4 py-3">{isBangla ? 'শিক্ষক' : 'Teacher'}</th>
+                            <th className="px-4 py-3">{isBangla ? 'কক্ষ' : 'Room'}</th>
+                            <th className="px-4 py-3 text-right">{isBangla ? 'অ্যাকশন' : 'Action'}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-medium">
+                          {['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'].flatMap(day =>
+                            (filteredRoutine?.slots ?? []).filter(sl => sl.day === day).map(sl => (
+                              <tr key={sl.id} className="hover:bg-slate-50/80 transition-colors">
+                                <td className="px-4 py-3"><span className="px-2 py-1 rounded-lg text-[10px] font-black bg-maroon-50 text-maroon-800 border border-rose-100">{sl.day}</span></td>
+                                <td className="px-4 py-3 text-slate-700 whitespace-nowrap"><span className="flex items-center gap-1"><Clock className="w-3 h-3 text-slate-400" />{sl.time}</span></td>
+                                <td className="px-4 py-3 font-bold text-slate-900">{sl.subject}</td>
+                                <td className="px-4 py-3 text-slate-600">{sl.teacher}</td>
+                                <td className="px-4 py-3 text-slate-500">{sl.room}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <button type="button" onClick={() => handleDeleteRoutineSlot(filteredRoutine!.batchName, sl.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
           </div>
         )}
@@ -1661,11 +2366,13 @@ export const AdminPortal: React.FC = () => {
                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
                   >
                     <option value="Class 8">Class 8</option>
-                    <option value="Class 9">Class 9</option>
-                    <option value="Class 10 (SSC)">Class 10 (SSC)</option>
-                    <option value="Class 11 (HSC 1st)">Class 11 (HSC 1st)</option>
-                    <option value="Class 12 (HSC 2nd)">Class 12 (HSC 2nd)</option>
-                    <option value="Medical/Varsity Admission">Medical/Varsity Admission</option>
+                    <option value="Class 9 (Science)">Class 9 (Science)</option>
+                    <option value="Class 9 (Commerce)">Class 9 (Commerce)</option>
+                    <option value="Class 10 (Science)">Class 10 (Science)</option>
+                    <option value="Class 10 (Commerce)">Class 10 (Commerce)</option>
+                    <option value="SSC Special Batch">SSC Special Batch</option>
+                    <option value="HSC (Science)">HSC (Science)</option>
+                    <option value="HSC (Commerce)">HSC (Commerce)</option>
                   </select>
                 </div>
 
@@ -1878,6 +2585,226 @@ export const AdminPortal: React.FC = () => {
                   className="px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold shadow-xs cursor-pointer"
                 >
                   {isBangla ? 'নম্বর প্রকাশ করুন' : 'Publish Score'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: ADD PUBLIC SUCCESS RESULT ================= */}
+      {showAddPublicResultModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-amber-500" />
+                  <span>{isBangla ? 'নতুন কৃতী শিক্ষার্থী ও সাফল্য যোগ করুন' : 'Add New Results & Success Story'}</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isBangla ? 'এই ফলাফল সরাসরি ওয়েবসাইটের "Results & Success" পেজে প্রদর্শিত হবে' : 'This entry will be publicly displayed on the Results & Success page'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddPublicResultModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePublicResult} className="space-y-4 text-xs font-medium">
+              {/* Photo Upload Section */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                <label className="block text-slate-700 font-bold">
+                  {isBangla ? 'শিক্ষার্থীর ছবি (Photo)' : 'Student Photo'}
+                </label>
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                    {(publicResultPhotoPreview || newPublicResult.photo) ? (
+                      <img
+                        src={publicResultPhotoPreview || newPublicResult.photo}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={() => setPublicResultPhotoPreview('')}
+                      />
+                    ) : (
+                      <ImageIcon className="w-6 h-6 text-slate-300" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-maroon-50 hover:border-maroon-300 text-xs font-bold cursor-pointer transition-colors shadow-2xs">
+                      <Upload className="w-3.5 h-3.5 text-maroon-700" />
+                      <span>{isBangla ? 'ডিভাইস থেকে আপলোড করুন' : 'Upload from Device'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePublicResultPhotoUpload}
+                      />
+                    </label>
+                    <input
+                      type="url"
+                      placeholder={isBangla ? 'অথবা ছবির ওয়েব URL পেস্ট করুন' : 'Or paste image URL (https://...)'}
+                      value={newPublicResult.photo}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setNewPublicResult(prev => ({ ...prev, photo: val }));
+                        setPublicResultPhotoPreview(val);
+                      }}
+                      className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maroon-100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    {isBangla ? 'শিক্ষার্থীর পূর্ণ নাম *' : 'Student Full Name *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={isBangla ? 'উদাঃ আহসানুল কবির' : 'e.g. Ahsanul Kabir'}
+                    value={newPublicResult.studentName}
+                    onChange={e => setNewPublicResult({ ...newPublicResult, studentName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    {isBangla ? 'পরীক্ষার নাম / স্তর *' : 'Exam / Class Level *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={isBangla ? 'উদাঃ HSC Examination' : 'e.g. HSC Examination, SSC, Medical'}
+                    value={newPublicResult.studentClass}
+                    onChange={e => setNewPublicResult({ ...newPublicResult, studentClass: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    {isBangla ? 'পরীক্ষার ক্যাটাগরি *' : 'Exam Category *'}
+                  </label>
+                  <select
+                    value={newPublicResult.examType}
+                    onChange={e => setNewPublicResult({ ...newPublicResult, examType: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
+                  >
+                    <option value="HSC Science">HSC Science</option>
+                    <option value="SSC Science">SSC Science</option>
+                    <option value="HSC Commerce">HSC Commerce</option>
+                    <option value="Medical Entrance">Medical Entrance</option>
+                    <option value="Engineering Entrance">Engineering Entrance</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    {isBangla ? 'পাসের বছর *' : 'Exam / Passing Year *'}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={2020}
+                    max={2030}
+                    value={newPublicResult.year}
+                    onChange={e => setNewPublicResult({ ...newPublicResult, year: Number(e.target.value) })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-slate-700 font-bold mb-1">
+                    {isBangla ? 'অর্জিত স্থান / মেধা তালিকা / চান্স *' : 'Merit Position / Distinction / Placement *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={isBangla ? 'উদাঃ 1st in Dhaka Board Merit List অথবা Admitted to DMC' : 'e.g. 1st in Dhaka Board Merit List or Admitted to BUET'}
+                    value={newPublicResult.position}
+                    onChange={e => setNewPublicResult({ ...newPublicResult, position: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    {isBangla ? 'জিপিএ / ফলাফল *' : 'GPA / Rank *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={isBangla ? 'উদাঃ GPA 5.00 (Golden) বা Merit #24' : 'e.g. GPA 5.00 (Golden)'}
+                    value={newPublicResult.gpa}
+                    onChange={e => setNewPublicResult({ ...newPublicResult, gpa: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    {isBangla ? 'প্রাপ্ত নম্বর / পার্সেন্টাইল' : 'Total Marks / Score'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={isBangla ? 'উদাঃ 1182 / 1200' : 'e.g. 1182 / 1200 or 89.75 / 100'}
+                    value={newPublicResult.marks}
+                    onChange={e => setNewPublicResult({ ...newPublicResult, marks: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-slate-700 font-bold mb-1">
+                    {isBangla ? 'প্রতিষ্ঠান / কলেজ / স্কুলের নাম *' : 'College / School / University *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={isBangla ? 'উদাঃ Notre Dame College, Holy Cross, Dhaka College' : 'e.g. Notre Dame College'}
+                    value={newPublicResult.institution}
+                    onChange={e => setNewPublicResult({ ...newPublicResult, institution: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-slate-700 font-bold mb-1">
+                    {isBangla ? 'শিক্ষার্থীর মন্তব্য / প্রতিক্রিয়া (Testimonial)' : 'Student Testimonial / Experience'}
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder={isBangla ? 'সাইকি একাডেমিক কেয়ার নিয়ে শিক্ষার্থীর অভিজ্ঞতা বা বক্তব্য...' : 'Student quote about Psyche Academic Care...'}
+                    value={newPublicResult.testimonial || ''}
+                    onChange={e => setNewPublicResult({ ...newPublicResult, testimonial: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600 resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPublicResultModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold cursor-pointer"
+                >
+                  {isBangla ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold shadow-xs cursor-pointer flex items-center gap-2"
+                >
+                  <Trophy className="w-4 h-4 text-amber-300" />
+                  <span>{isBangla ? 'ফলাফল প্রকাশ করুন' : 'Publish Result'}</span>
                 </button>
               </div>
             </form>
@@ -2326,6 +3253,301 @@ export const AdminPortal: React.FC = () => {
                 <button type="submit" className="px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold shadow-xs cursor-pointer text-xs">{isBangla ? 'রুটিনে যোগ করুন' : 'Add to Routine'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL: UPLOAD CLASS ROUTINE (IMAGE OR PDF) ===== */}
+      {showUploadRoutineModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+          onClick={() => setShowUploadRoutineModal(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-6 sm:p-8 space-y-5 animate-in zoom-in-95 my-8" 
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-maroon-50 text-maroon-800 border border-maroon-200 mb-1">
+                  <Upload className="w-3 h-3" />
+                  <span>{isBangla ? 'রুটিন আপলোড' : 'Publish Class Routine'}</span>
+                </div>
+                <h3 className="text-lg font-black text-slate-900">
+                  {isBangla ? 'শ্রেণীভিত্তিক রুটিন আপলোড (Image / PDF)' : 'Upload Class Routine (Image / PDF)'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isBangla ? 'যে ক্লাসের রুটিন নির্বাচন করবেন, শুধুমাত্র সেই ক্লাসের শিক্ষার্থীরাই তা দেখতে পাবে।' : 'Only students of the selected class will see this routine.'}
+                </p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowUploadRoutineModal(false)} 
+                className="p-2 rounded-xl hover:bg-slate-100 cursor-pointer text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveClassRoutine} className="space-y-4">
+              {/* Routine Title */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {isBangla ? 'রুটিনের শিরোনাম *' : 'Routine Title *'}
+                </label>
+                <input
+                  type="text"
+                  placeholder={isBangla ? 'যেমন: Class 8 Academic Routine 2026' : 'e.g. Class 8 Academic Routine 2026'}
+                  value={uploadRoutineForm.title}
+                  onChange={e => setUploadRoutineForm(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maroon-500/20 focus:border-maroon-600 font-medium"
+                  required
+                />
+              </div>
+
+              {/* Target Class Selection */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-maroon-700" />
+                    <span>{isBangla ? 'নির্দিষ্ট শ্রেণী (Target Class) *' : 'Target Class *'}</span>
+                  </label>
+                  <select
+                    value={uploadRoutineForm.targetClass}
+                    onChange={e => setUploadRoutineForm(prev => ({ ...prev, targetClass: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maroon-500/20 focus:border-maroon-600 font-bold text-maroon-900"
+                  >
+                    <option value="Class 8">Class 8 (৮ম শ্রেণি)</option>
+                    <option value="Class 9 (Science)">Class 9 (Science) - ৯ম বিজ্ঞান</option>
+                    <option value="Class 9 (Commerce)">Class 9 (Commerce) - ৯ম ব্যবসায় শিক্ষা</option>
+                    <option value="Class 10 (Science)">Class 10 (Science) - ১০ম বিজ্ঞান</option>
+                    <option value="Class 10 (Commerce)">Class 10 (Commerce) - ১০ম ব্যবসায় শিক্ষা</option>
+                    <option value="SSC Special Batch">SSC Special Batch - এসএসসি স্পেশাল ব্যাচ</option>
+                    <option value="HSC (Science)">HSC (Science) - এইচএসসি বিজ্ঞান</option>
+                    <option value="HSC (Commerce)">HSC (Commerce) - এইচএসসি ব্যবসায় শিক্ষা</option>
+                    <option value="All Classes">All Classes (সকল ব্যাচ)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isBangla ? 'ফাইলের ধরন (Format) *' : 'File Type *'}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setUploadRoutineForm(prev => ({ ...prev, fileType: 'image' }))}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                        uploadRoutineForm.fileType === 'image'
+                          ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-500/20'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      <span>{isBangla ? 'ছবি (Image)' : 'Image'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUploadRoutineForm(prev => ({ ...prev, fileType: 'pdf' }))}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                        uploadRoutineForm.fileType === 'pdf'
+                          ? 'bg-rose-50 border-rose-500 text-rose-800 ring-2 ring-rose-500/20'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>{isBangla ? 'পিডিএফ (PDF)' : 'PDF'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* File Upload Box */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {isBangla ? 'রুটিন ফাইল নির্বাচন করুন (Image বা PDF) *' : 'Choose Routine File (Image or PDF) *'}
+                </label>
+                <div className="border-2 border-dashed border-slate-300 hover:border-maroon-400 rounded-2xl p-5 text-center transition-colors bg-slate-50/50">
+                  <input
+                    type="file"
+                    id="routine-file-upload"
+                    accept="image/*,application/pdf"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <label htmlFor="routine-file-upload" className="cursor-pointer block space-y-2">
+                    <div className="w-12 h-12 rounded-2xl bg-white shadow-xs border border-slate-200 text-maroon-800 flex items-center justify-center mx-auto">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <div className="text-xs font-bold text-slate-800">
+                      {isBangla ? 'কম্পিউটার থেকে ছবি বা পিডিএফ বেছে নিন' : 'Click to browse Image or PDF from device'}
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      PNG, JPG, WebP অথবা PDF ফাইল (সর্বোচ্চ 10MB)
+                    </p>
+                  </label>
+
+                  {/* Uploaded File Feedback or Generator option */}
+                  {uploadRoutineForm.fileName ? (
+                    <div className="mt-3 p-3 bg-white rounded-xl border border-emerald-200 flex items-center justify-between text-left">
+                      <div className="flex items-center gap-2.5 overflow-hidden">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                          {uploadRoutineForm.fileType === 'pdf' ? <FileText className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-xs font-bold text-slate-900 truncate">{uploadRoutineForm.fileName}</p>
+                          <p className="text-[10px] text-slate-500">{uploadRoutineForm.fileSize}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-emerald-600 font-bold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 shrink-0">
+                        Ready ✓
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-center gap-2">
+                      <span className="text-xs text-slate-400">{isBangla ? 'অথবা' : 'or'}</span>
+                      <button
+                        type="button"
+                        onClick={handleGenerateSampleRoutine}
+                        className="px-3 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>{isBangla ? 'ডিফল্ট সাইকি রুটিন তৈরি করুন' : 'Generate Sample Routine Image'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Effective Date & Notes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isBangla ? 'কার্যকর হওয়ার তারিখ' : 'Effective Date'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. October 01, 2026"
+                    value={uploadRoutineForm.effectiveDate}
+                    onChange={e => setUploadRoutineForm(prev => ({ ...prev, effectiveDate: e.target.value }))}
+                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maroon-500/20 focus:border-maroon-600 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isBangla ? 'শিক্ষার্থীদের জন্য বিশেষ নির্দেশনা' : 'Notes for Students'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={isBangla ? 'যেমন: সময়মতো ক্লাসে উপস্থিত থাকতে হবে' : 'e.g. Bring syllabus notebooks daily'}
+                    value={uploadRoutineForm.notes}
+                    onChange={e => setUploadRoutineForm(prev => ({ ...prev, notes: e.target.value }))}
+                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maroon-500/20 focus:border-maroon-600 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadRoutineModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold cursor-pointer text-xs"
+                >
+                  {isBangla ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-maroon-800 to-rose-700 hover:from-maroon-900 hover:to-rose-800 text-white font-bold shadow-md cursor-pointer text-xs flex items-center gap-1.5 transition-all"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>{isBangla ? 'স্টুডেন্ট পোর্টালে প্রকাশ করুন' : 'Publish to Student Portal'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL: PREVIEW ROUTINE LIGHTBOX ===== */}
+      {previewRoutineModal && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+          onClick={() => setPreviewRoutineModal(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl p-5 sm:p-6 space-y-4 animate-in zoom-in-95 my-6 flex flex-col max-h-[90vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1 rounded-full text-xs font-black bg-maroon-100 text-maroon-900 border border-maroon-200">
+                  {previewRoutineModal.targetClass}
+                </span>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 line-clamp-1">
+                    {previewRoutineModal.title}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {previewRoutineModal.fileName} • {previewRoutineModal.uploadedAt}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewRoutineModal.fileUrl}
+                  download={previewRoutineModal.fileName || `${previewRoutineModal.targetClass}-routine.${previewRoutineModal.fileType === 'pdf' ? 'pdf' : 'png'}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold transition-colors shadow-xs"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{isBangla ? 'ডাউনলোড' : 'Download'}</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewRoutineModal(null)}
+                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content Preview */}
+            <div className="flex-1 overflow-auto bg-slate-100 rounded-2xl p-2 sm:p-4 flex items-center justify-center min-h-[350px]">
+              {previewRoutineModal.fileType === 'image' || previewRoutineModal.fileUrl.startsWith('data:image') ? (
+                <img
+                  src={previewRoutineModal.fileUrl}
+                  alt={previewRoutineModal.title}
+                  className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-xs"
+                />
+              ) : (
+                <div className="w-full h-[65vh] bg-white rounded-xl p-4 flex flex-col items-center justify-center text-center space-y-4 border border-slate-200">
+                  <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shadow-xs">
+                    <FileText className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-slate-900">{previewRoutineModal.title}</h4>
+                    <p className="text-xs text-slate-500 mt-1">{previewRoutineModal.fileName} ({previewRoutineModal.fileSize})</p>
+                    <p className="text-xs text-maroon-800 font-semibold mt-0.5">{isBangla ? 'শ্রেণী: ' : 'Class: '}{previewRoutineModal.targetClass}</p>
+                  </div>
+                  {previewRoutineModal.notes && (
+                    <p className="text-xs text-slate-600 max-w-md bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      "{previewRoutineModal.notes}"
+                    </p>
+                  )}
+                  <a
+                    href={previewRoutineModal.fileUrl}
+                    download={previewRoutineModal.fileName}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold transition-all shadow-md"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>{isBangla ? 'পিডিএফ ফাইল ডাউনলোড করুন' : 'Download PDF Document'}</span>
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

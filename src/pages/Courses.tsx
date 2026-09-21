@@ -10,11 +10,15 @@ export const Courses: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const categories = [
-    { id: 'All', label: isBangla ? 'সকল কোর্স' : 'All Courses' },
+    { id: 'All', label: isBangla ? 'সকল ব্যাচ ও কোর্স' : 'All Batches' },
     { id: 'Class 8', label: isBangla ? '৮ম শ্রেণি' : 'Class 8' },
-    { id: 'Class 9', label: isBangla ? '৯ম শ্রেণি' : 'Class 9' },
-    { id: 'Class 10', label: isBangla ? '১০ম শ্রেণি' : 'Class 10' },
-    { id: 'Class 10 Special Batch', label: isBangla ? '১০ম স্পেশাল ব্যাচ' : 'Class 10 Special Batch' },
+    { id: 'Class 9 (Science)', label: isBangla ? '৯ম শ্রেণি (বিজ্ঞান)' : 'Class 9 (Science)' },
+    { id: 'Class 9 (Commerce)', label: isBangla ? '৯ম শ্রেণি (ব্যবসায় শিক্ষা)' : 'Class 9 (Commerce)' },
+    { id: 'Class 10 (Science)', label: isBangla ? '১০ম শ্রেণি (বিজ্ঞান)' : 'Class 10 (Science)' },
+    { id: 'Class 10 (Commerce)', label: isBangla ? '১০ম শ্রেণি (ব্যবসায় শিক্ষা)' : 'Class 10 (Commerce)' },
+    { id: 'SSC Special Batch', label: isBangla ? 'এসএসসি স্পেশাল ব্যাচ' : 'SSC Special Batch' },
+    { id: 'HSC (Science)', label: isBangla ? 'এইচএসসি (বিজ্ঞান)' : 'HSC (Science)' },
+    { id: 'HSC (Commerce)', label: isBangla ? 'এইচএসসি (ব্যবসায় শিক্ষা)' : 'HSC (Commerce)' },
   ];
 
   const filteredCourses = useMemo(() => {
@@ -23,31 +27,16 @@ export const Courses: React.FC = () => {
       const matchesQuery = 
         course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         course.shortDescription.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.targetAudience.toLowerCase().includes(searchQuery.toLowerCase());
+        course.targetAudience.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        course.category.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesQuery;
     });
   }, [selectedCategory, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20">
-      {/* Page Header */}
-      <section className="bg-gradient-to-b from-maroon-50/70 via-slate-50 to-white py-16 sm:py-20 border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-maroon-100/80 text-maroon-800 text-xs font-bold uppercase tracking-wider mb-4 border border-maroon-200">
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>{t('courses.badge')}</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-            {t('courses.title')}
-          </h1>
-          <p className="mt-4 text-base sm:text-lg text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            {t('courses.subtitle')}
-          </p>
-        </div>
-      </section>
-
+    <div className="min-h-screen bg-slate-50/50 pb-20 pt-8 sm:pt-10">
       {/* Filter and Search Bar */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
           
           {/* Category Tabs */}

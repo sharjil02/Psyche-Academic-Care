@@ -2,6 +2,18 @@ import { Teacher } from '../types';
 
 export const teachersData: Teacher[] = [
   {
+    id: 't0',
+    name: 'Prof. Dr. Mahfuzur Rahman',
+    subject: 'Director',
+    qualification: 'Ph.D. in Education (DU), Ex-Cadet College Faculty',
+    experience: '18+ Years Academic Leadership',
+    shortBio: 'Founder & Principal Director guiding institutional vision, curriculum standards, and holistic academic mentoring across all batches.',
+    photo: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=600&q=80',
+    specialty: 'Academic Leadership & Educational Pedagogy',
+    rating: 5.0,
+    classesHandled: 'Senior Academic Guidance & Mentorship'
+  },
+  {
     id: 't1',
     name: 'Engr. Mahbubur Rahman',
     subject: 'Physics & Higher Mathematics',
@@ -11,7 +23,7 @@ export const teachersData: Teacher[] = [
     photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
     specialty: 'Mechanics, Electromagnetism & Calculus',
     rating: 4.9,
-    classesHandled: 'Class 9-12, Engineering Admission'
+    classesHandled: 'Class 9-10 (Science), SSC Special Batch, HSC (Science)'
   },
   {
     id: 't2',
@@ -23,7 +35,7 @@ export const teachersData: Teacher[] = [
     photo: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80',
     specialty: 'Organic Chemistry & Reaction Mechanisms',
     rating: 4.9,
-    classesHandled: 'Class 9-12, Medical Admission'
+    classesHandled: 'Class 9-10 (Science), SSC Special Batch, HSC (Science)'
   },
   {
     id: 't3',
@@ -35,7 +47,7 @@ export const teachersData: Teacher[] = [
     photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80',
     specialty: 'Applied Grammar, IELTS & Writing',
     rating: 4.8,
-    classesHandled: 'Class 6-12, Grammar Clinics'
+    classesHandled: 'Class 8, Class 9-10, SSC Special Batch, HSC'
   },
   {
     id: 't4',
@@ -47,7 +59,7 @@ export const teachersData: Teacher[] = [
     photo: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=600&q=80',
     specialty: 'Human Physiology & Botany Diagnostics',
     rating: 5.0,
-    classesHandled: 'Class 9-12, Medical Coaching'
+    classesHandled: 'Class 9-10 (Science), SSC Special Batch, HSC (Science)'
   },
   {
     id: 't5',
@@ -59,7 +71,7 @@ export const teachersData: Teacher[] = [
     photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80',
     specialty: 'Algebra, Geometry & ICT Fundamentals',
     rating: 4.8,
-    classesHandled: 'Class 6-10'
+    classesHandled: 'Class 8, Class 9-10 (Science & Commerce), SSC Special'
   },
   {
     id: 't6',
@@ -71,6 +83,6 @@ export const teachersData: Teacher[] = [
     photo: 'https://images.unsplash.com/photo-1580894732444-8ecded7900cd?auto=format&fit=crop&w=600&q=80',
     specialty: 'Financial Accounting & Cost Management',
     rating: 4.9,
-    classesHandled: 'Class 9-12 (Commerce Stream)'
+    classesHandled: 'Class 9-10 (Commerce), HSC (Commerce)'
   }
 ];

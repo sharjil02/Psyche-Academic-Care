@@ -63,10 +63,16 @@ export const Contact: React.FC = () => {
                 {t('contact.phoneTitle')}
               </h3>
               <p className="text-sm font-medium text-slate-700">
-                {t('contact.admissionsHelpline')} <strong className="text-maroon-800">+880 1812-345678</strong>
+                {t('contact.admissionsHelpline')}{' '}
+                <a href="tel:+8801683334080" className="text-maroon-800 font-bold hover:underline">
+                  +880 1683-334080
+                </a>
               </p>
               <p className="text-sm text-slate-600">
-                {t('contact.adminDesk')} +880 1711-223344
+                {t('contact.adminDesk')}{' '}
+                <a href="tel:+8801683334080" className="text-slate-700 font-semibold hover:underline">
+                  +880 1683-334080
+                </a>
               </p>
               <p className="text-xs text-slate-500 pt-0.5">
                 {t('contact.whatsappNote')}

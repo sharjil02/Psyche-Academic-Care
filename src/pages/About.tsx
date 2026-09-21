@@ -111,8 +111,8 @@ export const About: React.FC = () => {
               </p>
               <p className="text-slate-600 text-base leading-relaxed">
                 {isBangla
-                  ? '৬ষ্ঠ শ্রেণি থেকে শুরু করে এসএসসি, এইচএসসি এবং বুয়েট-মেডিকেল ভর্তি পরীক্ষা পর্যন্ত আমাদের পদ্ধতিগত কারিকুলাম প্রতিটি শিক্ষার্থীকে আত্মবিশ্বাসী করে গড়ে তোলে।'
-                  : 'From Class 6 foundation building to high-stakes SSC and HSC board examinations, and culminating in competitive Medical and Engineering university admissions, our systematic curriculum builds both academic competence and real exam resilience.'}
+                  ? '৮ম শ্রেণি, ৯ম ও ১০ম শ্রেণি (বিজ্ঞান ও ব্যবসায় শিক্ষা), এসএসসি স্পেশাল ব্যাচ এবং এইচএসসি (বিজ্ঞান ও ব্যবসায় শিক্ষা)-এর জন্য আমাদের পদ্ধতিগত পাঠ্যক্রম প্রতিটি শিক্ষার্থীকে আত্মবিশ্বাসী ও বোর্ড পরীক্ষায় সেরা করে গড়ে তোলে।'
+                  : 'From Class 8 foundation to Class 9 & 10 (Science & Commerce), SSC Special Batch, and HSC (Science & Commerce), our systematic academic curriculum builds both deep conceptual clarity and board exam excellence.'}
               </p>
 
               <div className="grid grid-cols-2 gap-4 pt-2">

@@ -7,7 +7,7 @@ export const noticesData: Notice[] = [
     date: 'September 15, 2026',
     category: 'Admission Notice',
     shortDescription: 'Fresh enrollment is now open for upcoming SSC and HSC batches. Limited seats per batch with early registration benefits.',
-    content: `We are pleased to announce that registrations are now open for the 2026-2027 academic session for Class 9, Class 10 (SSC), and Class 11-12 (HSC) batches at Psyche Academic Care.
+    content: `We are pleased to announce that registrations are now open for the 2026-2027 academic session for Class 8, Class 9 & 10 (Science & Commerce), SSC Special Batch, and HSC (Science & Commerce) batches at Psyche Academic Care.
 
 Key Admission Highlights:
 1. Early bird tuition concession available until October 15, 2026.

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { PsycheLogo } from './Logo';
 import { useLanguage } from '../context/LanguageContext';
+import { LanguageToggle } from './LanguageToggle';
 
 export const Footer: React.FC = () => {
   const { t, isBangla } = useLanguage();
@@ -110,7 +111,9 @@ export const Footer: React.FC = () => {
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-maroon-800 shrink-0" />
-                <span>+880 1812-345678, +880 1711-223344</span>
+                <a href="tel:+8801683334080" className="hover:text-maroon-900 transition-colors">
+                  +880 1683-334080
+                </a>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-maroon-800 shrink-0" />
@@ -129,6 +132,7 @@ export const Footer: React.FC = () => {
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>{t('footer.copyright')}</p>
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <LanguageToggle variant="footer" />
             <Link to="/contact" className="hover:text-maroon-800 transition-colors font-medium">{t('footer.helpDesk')}</Link>
             <Link to="/admission" className="hover:text-maroon-800 transition-colors font-medium">{t('nav.admission')}</Link>
             <Link to="/student-portal" className="text-maroon-800 hover:text-maroon-900 transition-colors font-bold">{t('nav.studentPortal')}</Link>

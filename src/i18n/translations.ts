@@ -106,7 +106,7 @@ export const translations = {
     'footer.quickLinks': 'Quick Links',
     'footer.contactTitle': 'Get In Touch',
     'footer.address': 'GEC Circle, Chattogram-4000, Bangladesh',
-    'footer.phone': '+880 1812-345678',
+    'footer.phone': '+880 1683-334080',
     'footer.email': 'admissions@psyche.edu.bd',
     'footer.hours': 'Sat - Fri: 8:00 AM - 8:30 PM',
     'footer.copyright': '© 2026 PSYCHE Academic Care. All Rights Reserved.',
@@ -174,8 +174,8 @@ export const translations = {
     // Admission Page
     'admission.badge': 'Enrollment Process',
     'admission.title': 'Online Admission Form',
-    'admission.desc': 'Take the definitive step towards academic excellence. Apply online for SSC, HSC, Class 6-10 foundation care, or university admission coaching at Psyche Academic Care.',
-    'admission.subtitle': 'Take the definitive step towards academic excellence. Apply online for SSC, HSC, Class 6-10 foundation care, or university admission coaching at Psyche Academic Care.',
+    'admission.desc': 'Take the definitive step towards academic excellence. Apply online for Class 8, Class 9 & 10 (Science & Commerce), SSC Special Batch, or HSC (Science & Commerce) academic care at Psyche Academic Care.',
+    'admission.subtitle': 'Take the definitive step towards academic excellence. Apply online for Class 8, Class 9 & 10 (Science & Commerce), SSC Special Batch, or HSC (Science & Commerce) academic care at Psyche Academic Care.',
     'admission.step1': 'Fill Form',
     'admission.step1Desc': 'Submit accurate student & guardian details.',
     'admission.step2': 'Counseling Call',
@@ -254,7 +254,7 @@ export const translations = {
     'login.demoCredentials': 'Demo Credentials (Click to auto-fill)',
     'login.studentDemo': 'Demo Student (SSC 2026)',
     'login.adminDemo': 'Demo Admin (Director)',
-    'login.needHelp': 'Need help accessing your account? Contact admissions desk at +880 1812-345678.',
+    'login.needHelp': 'Need help accessing your account? Contact admissions desk at +880 1683-334080.',
   },
 
   bn: {
@@ -362,7 +362,7 @@ export const translations = {
     'footer.quickLinks': 'প্রয়োজনীয় লিঙ্কসমূহ',
     'footer.contactTitle': 'যোগাযোগের ঠিকানা',
     'footer.address': 'জিইসি মোড়, চট্টগ্রাম-৪০০০, বাংলাদেশ',
-    'footer.phone': '+৮৮০ ১৮১২-৩৪৫৬৭৮',
+    'footer.phone': '+৮৮০ ১৬৮৩-৩৩৪০৮০',
     'footer.email': 'admissions@psyche.edu.bd',
     'footer.hours': 'শনি - শুক্র: সকাল ৮:০০ - রাত ৮:৩০',
     'footer.copyright': '© ২০২৬ সাইকি একাডেমিক কেয়ার। সর্বস্বত্ব সংরক্ষিত।',
@@ -430,8 +430,8 @@ export const translations = {
     // Admission Page
     'admission.badge': 'ভর্তি প্রক্রিয়া',
     'admission.title': 'অনলাইন ভর্তি ফরম',
-    'admission.desc': 'একাডেমিক শ্রেষ্ঠত্বের পথে আপনার প্রথম পদক্ষেপ। সাইকি একাডেমিক কেয়ারে ভর্তি হতে নিচের তথ্যগুলো পূরণ করুন।',
-    'admission.subtitle': 'একাডেমিক শ্রেষ্ঠত্বের পথে আপনার প্রথম পদক্ষেপ। সাইকি একাডেমিক কেয়ারে ভর্তি হতে নিচের তথ্যগুলো পূরণ করুন।',
+    'admission.desc': 'একাডেমিক শ্রেষ্ঠত্বের পথে আপনার প্রথম পদক্ষেপ। ৮ম শ্রেণি, ৯ম-১০ম শ্রেণি (বিজ্ঞান ও ব্যবসায় শিক্ষা), এসএসসি স্পেশাল ব্যাচ এবং এইচএসসি (বিজ্ঞান ও ব্যবসায় শিক্ষা)-তে ভর্তির জন্য আবেদন করুন।',
+    'admission.subtitle': 'একাডেমিক শ্রেষ্ঠত্বের পথে আপনার প্রথম পদক্ষেপ। ৮ম শ্রেণি, ৯ম-১০ম শ্রেণি (বিজ্ঞান ও ব্যবসায় শিক্ষা), এসএসসি স্পেশাল ব্যাচ এবং এইচএসসি (বিজ্ঞান ও ব্যবসায় শিক্ষা)-তে ভর্তির জন্য আবেদন করুন।',
     'admission.step1': 'ফরম পূরণ',
     'admission.step1Desc': 'শিক্ষার্থী ও অভিভাবকের সঠিক তথ্য প্রদান করুন।',
     'admission.step2': 'কাউন্সেলিং কল',
@@ -510,7 +510,7 @@ export const translations = {
     'login.demoCredentials': 'ডেমো তথ্য (স্বয়ংক্রিয় পূরণে ক্লিক করুন)',
     'login.studentDemo': 'ডেমো শিক্ষার্থী (এসএসসি ২০২৬)',
     'login.adminDemo': 'ডেমো অ্যাডমিন (পরিচালক)',
-    'login.needHelp': 'অ্যাকাউন্টে প্রবেশ করতে সহায়তা প্রয়োজন? ভর্তি ডেস্কে কল করুন: +৮৮০ ১৮১২-৩৪৫৬৭৮।',
+    'login.needHelp': 'অ্যাকাউন্টে প্রবেশ করতে সহায়তা প্রয়োজন? ভর্তি ডেস্কে কল করুন: +৮৮০ ১৬৮৩-৩৩৪০৮০।',
   }
 } as const;
 

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { PsycheLogo } from './Logo';
 import { useLanguage } from '../context/LanguageContext';
+import { LanguageToggle } from './LanguageToggle';
 
 export const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -74,10 +75,10 @@ export const Navbar: React.FC = () => {
       <div className="bg-slate-950 text-slate-300 text-xs py-2 px-4 border-b border-maroon-900/40">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 sm:gap-6">
-            <span className="flex items-center gap-1.5 hover:text-white transition-colors">
+            <a href="tel:+8801683334080" className="flex items-center gap-1.5 hover:text-white transition-colors">
               <Phone className="w-3.5 h-3.5 text-maroon-400" />
-              <span>+880 1812-345678</span>
-            </span>
+              <span>+880 1683-334080</span>
+            </a>
             <span className="hidden sm:flex items-center gap-1.5 hover:text-white transition-colors">
               <Mail className="w-3.5 h-3.5 text-maroon-400" />
               <span>admissions@psyche.edu.bd</span>
@@ -89,6 +90,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageToggle variant="topbar" />
             {authUser ? (
               <div className="flex items-center gap-2">
                 <Link
@@ -165,9 +167,6 @@ export const Navbar: React.FC = () => {
               <span className="block text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none">
                 {isBangla ? 'সাইকি' : 'PSYCHE'} <span className="text-maroon-800">{isBangla ? 'একাডেমিক' : 'Academic'}</span> <span className="text-maroon-500">{isBangla ? 'কেয়ার' : 'Care'}</span>
               </span>
-              <span className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase">
-                {t('nav.subheading')}
-              </span>
             </div>
           </Link>
 
@@ -188,6 +187,8 @@ export const Navbar: React.FC = () => {
                 </NavLink>
               ))}
             </div>
+
+            <LanguageToggle variant="navbar" />
 
             <Link
               to="/admission"
@@ -235,6 +236,7 @@ export const Navbar: React.FC = () => {
                 </NavLink>
               ))}
               <div className="pt-3 mt-2 border-t border-slate-100 flex flex-col gap-2">
+                <LanguageToggle variant="mobile" />
                 {authUser ? (
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                     <div className="flex items-center gap-2">

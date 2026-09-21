@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { ResultCard } from '../components/ResultCard';
-import { resultsData, statisticsOverview } from '../data/results';
+import { resultsData } from '../data/results';
+import { StudentResult } from '../types';
 import { 
   Trophy, 
-  Search
+  Search,
+  Plus
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -13,11 +16,61 @@ export const Results: React.FC = () => {
   const [selectedExamType, setSelectedExamType] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  const [resultsList, setResultsList] = useState<StudentResult[]>(() => {
+    try {
+      const saved = localStorage.getItem('psyche_public_results');
+      return saved ? JSON.parse(saved) : resultsData;
+    } catch {
+      return resultsData;
+    }
+  });
+
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('pschye_auth_user');
+      const user = saved ? JSON.parse(saved) : null;
+      return user?.role === 'admin';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const handleResultsUpdate = () => {
+      try {
+        const saved = localStorage.getItem('psyche_public_results');
+        if (saved) {
+          setResultsList(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    const handleAuthUpdate = () => {
+      try {
+        const saved = localStorage.getItem('pschye_auth_user');
+        const user = saved ? JSON.parse(saved) : null;
+        setIsAdmin(user?.role === 'admin');
+      } catch {
+        setIsAdmin(false);
+      }
+    };
+
+    window.addEventListener('storage', handleResultsUpdate);
+    window.addEventListener('resultsUpdate', handleResultsUpdate);
+    window.addEventListener('authChange', handleAuthUpdate);
+    return () => {
+      window.removeEventListener('storage', handleResultsUpdate);
+      window.removeEventListener('resultsUpdate', handleResultsUpdate);
+      window.removeEventListener('authChange', handleAuthUpdate);
+    };
+  }, []);
+
+  const uniqueYears = Array.from(new Set(resultsList.map(r => r.year.toString()))).sort((a, b) => Number(b) - Number(a));
   const years = [
     { id: 'All', label: isBangla ? 'সব বছর' : 'All Years' },
-    { id: '2026', label: '2026' },
-    { id: '2025', label: '2025' },
-    { id: '2024', label: '2024' }
+    ...uniqueYears.map(y => ({ id: y, label: y }))
   ];
 
   const examTypes = [
@@ -29,7 +82,7 @@ export const Results: React.FC = () => {
     { id: 'Engineering Entrance', label: isBangla ? 'ইঞ্জিনিয়ারিং ভর্তি পরীক্ষা' : 'Engineering Entrance' }
   ];
 
-  const filteredResults = resultsData.filter(res => {
+  const filteredResults = resultsList.filter(res => {
     const matchesYear = selectedYear === 'All' || res.year.toString() === selectedYear;
     const matchesType = selectedExamType === 'All' || res.examType === selectedExamType;
     const matchesQuery = 
@@ -40,65 +93,9 @@ export const Results: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20">
-      {/* Header Banner */}
-      <section className="bg-gradient-to-b from-maroon-50/70 via-slate-50 to-white py-16 sm:py-20 border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-maroon-100/80 text-maroon-800 text-xs font-bold uppercase tracking-wider mb-4 border border-maroon-200">
-            <Trophy className="w-3.5 h-3.5" />
-            <span>{t('results.badge')}</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-            {t('results.title')}
-          </h1>
-          <p className="mt-4 text-base sm:text-lg text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            {t('results.subtitle')}
-          </p>
-        </div>
-      </section>
-
-      {/* Achievement Statistics Bar */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-6 sm:p-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div className="space-y-1">
-              <div className="text-3xl sm:text-4xl font-black text-maroon-800">
-                {statisticsOverview.gpa5Percentage}
-              </div>
-              <div className="text-xs sm:text-sm font-semibold text-slate-600">
-                {isBangla ? 'বোর্ড জিপিএ ৫.০০ হার' : 'Board GPA 5.00 Rate'}
-              </div>
-            </div>
-            <div className="space-y-1 border-l border-slate-100">
-              <div className="text-3xl sm:text-4xl font-black text-rose-700">
-                {statisticsOverview.medicalAndEngineeringPlacements}
-              </div>
-              <div className="text-xs sm:text-sm font-semibold text-slate-600">
-                {isBangla ? 'বুয়েট, ঢাবি ও মেডিকেল চান্স' : 'BUET, DU & Medical Admissions'}
-              </div>
-            </div>
-            <div className="space-y-1 border-l border-slate-100">
-              <div className="text-3xl sm:text-4xl font-black text-amber-500">
-                {statisticsOverview.overallSuccessRate}
-              </div>
-              <div className="text-xs sm:text-sm font-semibold text-slate-600">
-                {isBangla ? 'মোট পাশের হার' : 'Total Exam Pass Percentage'}
-              </div>
-            </div>
-            <div className="space-y-1 border-l border-slate-100">
-              <div className="text-3xl sm:text-4xl font-black text-maroon-900">
-                {isBangla ? '১ম স্থান' : '1st Rank'}
-              </div>
-              <div className="text-xs sm:text-sm font-semibold text-slate-600">
-                {isBangla ? 'ঢাকা ও চট্টগ্রাম বোর্ড মেধা তালিকা' : 'Board Merit List Distinction'}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
+    <div className="min-h-screen bg-slate-50/50 pb-20 pt-8 sm:pt-10">
       {/* Filter and Search Controls */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
           
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
@@ -145,22 +142,33 @@ export const Results: React.FC = () => {
 
         </div>
 
-        <div className="mt-4 px-1 text-xs font-semibold text-slate-500 flex items-center justify-between">
+        <div className="mt-4 px-1 text-xs font-semibold text-slate-500 flex flex-wrap items-center justify-between gap-2">
           <span>
             {isBangla ? `${filteredResults.length} জন শিক্ষার্থীর ফলাফল প্রদর্শিত হচ্ছে` : `Showing ${filteredResults.length} student records`}
           </span>
-          {(selectedYear !== 'All' || selectedExamType !== 'All' || searchQuery !== '') && (
-            <button
-              onClick={() => {
-                setSelectedYear('All');
-                setSelectedExamType('All');
-                setSearchQuery('');
-              }}
-              className="text-maroon-800 hover:underline"
-            >
-              {isBangla ? 'ফিল্টার রিসেট করুন' : 'Reset Filters'}
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Link
+                to="/admin-portal"
+                className="inline-flex items-center gap-1 text-maroon-800 hover:text-maroon-900 font-bold hover:underline"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{isBangla ? 'নতুন ফলাফল যোগ করুন' : 'Add New Result'}</span>
+              </Link>
+            )}
+            {(selectedYear !== 'All' || selectedExamType !== 'All' || searchQuery !== '') && (
+              <button
+                onClick={() => {
+                  setSelectedYear('All');
+                  setSelectedExamType('All');
+                  setSearchQuery('');
+                }}
+                className="text-maroon-800 hover:underline"
+              >
+                {isBangla ? 'ফিল্টার রিসেট করুন' : 'Reset Filters'}
+              </button>
+            )}
+          </div>
         </div>
       </section>
 

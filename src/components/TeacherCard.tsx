@@ -59,7 +59,11 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({ teacher }) => {
 
       {/* Footer Accent */}
       <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-        <span className="font-semibold text-slate-700">{isBangla ? 'সিনিয়র ফ্যাকাল্টি' : 'Senior Faculty Member'}</span>
+        <span className="font-semibold text-slate-700">
+          {teacher.subject.toLowerCase().includes('director') || teacher.experience.toLowerCase().includes('director')
+            ? (isBangla ? 'পরিচালক ও অধ্যক্ষ' : 'Founder & Director')
+            : (isBangla ? 'সিনিয়র ফ্যাকাল্টি' : 'Senior Faculty Member')}
+        </span>
         <span className="text-maroon-800 font-medium">{isBangla ? 'সাইকি একাডেমিক কেয়ার' : 'PSYCHE Academic Care'}</span>
       </div>
     </div>

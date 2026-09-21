@@ -9,8 +9,12 @@ import {
 import {
   initialAdminNotices,
   initialAdminRoutines,
+  initialAdminClassRoutines,
   AdminNotice,
   AdminRoutine,
+  AdminClassRoutine,
+  isClassMatching,
+  normalizeClass,
 } from '../data/adminData';
 import { 
   UserCircle, 
@@ -27,6 +31,12 @@ import {
   CalendarDays,
   AlertTriangle,
   Clock,
+  Download,
+  Eye,
+  ZoomIn,
+  FileText,
+  Image as ImageIcon,
+  Sparkles,
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -52,6 +62,43 @@ export const StudentPortal: React.FC = () => {
     const saved = localStorage.getItem('pschye_admin_routines');
     return saved ? JSON.parse(saved) : initialAdminRoutines;
   });
+
+  // Read class routines from same localStorage key admin writes to
+  const [classRoutines, setClassRoutines] = useState<AdminClassRoutine[]>(() => {
+    try {
+      const saved = localStorage.getItem('pschye_class_routines');
+      return saved ? JSON.parse(saved) : initialAdminClassRoutines;
+    } catch {
+      return initialAdminClassRoutines;
+    }
+  });
+
+  // Current student class (can be dynamically switched to test filtering per class)
+  const [selectedStudentClass, setSelectedStudentClass] = useState<string>(() => {
+    return currentUser?.currentClass || mockStudentProfile.currentClass || 'Class 8';
+  });
+
+  const [studentRoutinePreview, setStudentRoutinePreview] = useState<AdminClassRoutine | null>(null);
+  const [studentRoutineViewMode, setStudentRoutineViewMode] = useState<'files' | 'slots'>('files');
+
+  useEffect(() => {
+    const handleRoutineUpdate = () => {
+      try {
+        const saved = localStorage.getItem('pschye_class_routines');
+        if (saved) setClassRoutines(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    window.addEventListener('classRoutinesUpdate', handleRoutineUpdate);
+    return () => window.removeEventListener('classRoutinesUpdate', handleRoutineUpdate);
+  }, []);
+
+  useEffect(() => {
+    if (currentUser?.currentClass) {
+      setSelectedStudentClass(currentUser.currentClass);
+    }
+  }, [currentUser]);
 
   // Student's enrolled batch for routine filtering
   const studentBatch = mockStudentProfile.batch;
@@ -251,8 +298,8 @@ export const StudentPortal: React.FC = () => {
                 </span>
                 <p className="text-[11px] text-slate-600 leading-snug">
                   {isBangla 
-                    ? 'পরীক্ষার নম্বর বা ফি সংশোধনের জন্য কল করুন: ০১৮১২-৩৪৫৬৭৮।'
-                    : 'Need fee or test marks correction? Call +880 1812-345678.'}
+                    ? 'পরীক্ষার নম্বর বা ফি সংশোধনের জন্য কল করুন: +৮৮০ ১৬৮৩-৩৩৪০৮০।'
+                    : 'Need fee or test marks correction? Call +880 1683-334080.'}
                 </p>
               </div>
 
@@ -587,23 +634,209 @@ export const StudentPortal: React.FC = () => {
               </div>
             )}
 
-            {/* TAB 6: CLASS ROUTINE */}
+            {/* TAB 6: CLASS ROUTINE (IMAGE / PDF & SLOTS) */}
             {activeTab === 'routine' && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6 animate-in fade-in duration-200">
-                <div className="border-b border-slate-100 pb-4">
-                  <h2 className="text-xl font-bold text-slate-900">
-                    {isBangla ? 'সাপ্তাহিক ক্লাস রুটিন' : 'Weekly Class Schedule'}
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {isBangla ? `ব্যাচ: ${studentBatch}` : `Batch: ${studentBatch}`}
-                  </p>
+              <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6 animate-in fade-in duration-200">
+                {/* Header with Student Class Badge & Switcher */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                  <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-maroon-50 border border-maroon-200 text-maroon-800 text-xs font-bold uppercase tracking-wider mb-2">
+                      <GraduationCap className="w-3.5 h-3.5" />
+                      <span>{isBangla ? `আপনার শ্রেণী: ${selectedStudentClass}` : `Enrolled Class: ${selectedStudentClass}`}</span>
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                      {isBangla ? 'আমার ক্লাস রুটিন (Image / PDF)' : 'My Class Routine'}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                      {isBangla
+                        ? `অ্যাডমিন প্যানেল থেকে শুধুমাত্র ${selectedStudentClass}-এর জন্য প্রকাশিত রুটিন এখানে প্রদর্শিত হচ্ছে।`
+                        : `Showing routines published exclusively for ${selectedStudentClass}.`}
+                    </p>
+                  </div>
+
+                  {/* Mode switcher: Files vs Slots */}
+                  <div className="p-1 rounded-xl bg-slate-100 border border-slate-200 flex items-center gap-1 text-xs font-bold shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setStudentRoutineViewMode('files')}
+                      className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                        studentRoutineViewMode === 'files' ? 'bg-white shadow-xs text-maroon-800' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {isBangla ? 'রুটিন ফাইল (Image/PDF)' : 'Routine Files'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStudentRoutineViewMode('slots')}
+                      className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                        studentRoutineViewMode === 'slots' ? 'bg-white shadow-xs text-maroon-800' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {isBangla ? 'সাপ্তাহিক ছক' : 'Weekly Schedule'}
+                    </button>
+                  </div>
                 </div>
-                {(() => {
+
+                {/* Interactive Testing Class Switcher */}
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-50 via-rose-50/40 to-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-slate-700 font-bold">
+                    <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>{isBangla ? 'ভিন্ন শ্রেণীর রুটিন ফিল্টার পরীক্ষা করুন:' : 'Test filtering with other classes:'}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Class 8', 'Class 9 (Science)', 'Class 9 (Commerce)', 'Class 10 (Science)', 'Class 10 (Commerce)', 'SSC Special Batch', 'HSC (Science)', 'HSC (Commerce)'].map(cls => (
+                      <button
+                        key={cls}
+                        type="button"
+                        onClick={() => setSelectedStudentClass(cls)}
+                        className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                          selectedStudentClass === cls
+                            ? 'bg-maroon-800 text-white shadow-xs'
+                            : 'bg-white text-slate-600 hover:bg-slate-200/80 border border-slate-200'
+                        }`}
+                      >
+                        {cls}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* VIEW 1: CLASS ROUTINE FILES (IMAGE / PDF) */}
+                {studentRoutineViewMode === 'files' && (() => {
+                  const myClassRoutines = classRoutines.filter(r => isClassMatching(r.targetClass, selectedStudentClass));
+
+                  if (myClassRoutines.length === 0) {
+                    return (
+                      <div className="text-center py-16 px-4 bg-slate-50/50 rounded-3xl border border-dashed border-slate-300 space-y-3">
+                        <div className="w-14 h-14 rounded-2xl bg-white shadow-xs border border-slate-200 flex items-center justify-center text-slate-400 mx-auto">
+                          <CalendarDays className="w-7 h-7 text-slate-400" />
+                        </div>
+                        <h4 className="text-base font-bold text-slate-800">
+                          {isBangla
+                            ? `${selectedStudentClass}-এর জন্য এখনও কোনো রুটিন প্রকাশ করা হয়নি`
+                            : `No routine published for ${selectedStudentClass} yet`}
+                        </h4>
+                        <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                          {isBangla
+                            ? 'অ্যাডমিন প্যানেল থেকে এই শ্রেণীর জন্য ইমেজ বা পিডিএফ রুটিন আপলোড হলে তা সরাসরি আপনার এই প্যানেলে চলে আসবে।'
+                            : 'When an admin uploads a routine for this class, it will appear here instantly.'}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {myClassRoutines.map(routine => (
+                        <div
+                          key={routine.id}
+                          className="bg-white rounded-3xl border border-slate-200 hover:border-maroon-300 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group"
+                        >
+                          <div>
+                            {/* Card Header */}
+                            <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-2 bg-gradient-to-r from-slate-50 to-white">
+                              <span className="px-3 py-1 rounded-full text-xs font-black bg-maroon-100 text-maroon-900 border border-maroon-200 flex items-center gap-1.5">
+                                <GraduationCap className="w-3.5 h-3.5 text-maroon-800" />
+                                {routine.targetClass}
+                              </span>
+
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
+                                routine.fileType === 'pdf' 
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
+                                {routine.fileType === 'pdf' ? '📄 PDF Document' : '🖼️ Image Routine'}
+                              </span>
+                            </div>
+
+                            {/* Preview Area */}
+                            <div
+                              onClick={() => setStudentRoutinePreview(routine)}
+                              className="relative h-56 bg-slate-100 cursor-pointer overflow-hidden flex items-center justify-center group/preview border-b border-slate-100"
+                            >
+                              {routine.fileType === 'image' || routine.fileUrl.startsWith('data:image') ? (
+                                <img
+                                  src={routine.fileUrl}
+                                  alt={routine.title}
+                                  className="w-full h-full object-cover object-top transition-transform duration-300 group-hover/preview:scale-105"
+                                />
+                              ) : (
+                                <div className="p-6 text-center space-y-2.5">
+                                  <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mx-auto shadow-xs">
+                                    <FileText className="w-8 h-8" />
+                                  </div>
+                                  <div className="text-xs font-bold text-slate-800 line-clamp-1">{routine.fileName}</div>
+                                  <span className="text-[11px] text-slate-500 font-medium">{routine.fileSize || 'PDF Document'}</span>
+                                </div>
+                              )}
+
+                              {/* Hover overlay */}
+                              <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-2xs">
+                                <span className="px-3.5 py-2 rounded-xl bg-white/95 text-slate-900 text-xs font-bold shadow-md flex items-center gap-2">
+                                  <ZoomIn className="w-4 h-4 text-maroon-800" />
+                                  <span>{isBangla ? 'পূর্ণাঙ্গ রুটিন জুম করে দেখুন' : 'Click to View Full Size'}</span>
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-5 space-y-2.5">
+                              <h3 className="text-base font-bold text-slate-900 leading-snug">
+                                {routine.title}
+                              </h3>
+
+                              <div className="space-y-1 text-xs text-slate-500">
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span>{isBangla ? 'প্রকাশের তারিখ:' : 'Published:'} <strong className="text-slate-700">{routine.uploadedAt}</strong></span>
+                                  {routine.effectiveDate && (
+                                    <span className="text-maroon-800 font-bold">
+                                      {isBangla ? `কার্যকর: ${routine.effectiveDate}` : `Effective: ${routine.effectiveDate}`}
+                                    </span>
+                                  )}
+                                </div>
+                                {routine.notes && (
+                                  <p className="text-xs text-slate-600 bg-rose-50/50 p-2.5 rounded-xl border border-rose-100/80 leading-relaxed italic">
+                                    "{routine.notes}"
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Card Footer Actions */}
+                          <div className="p-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setStudentRoutinePreview(routine)}
+                              className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-maroon-800 hover:text-maroon-900 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-maroon-800" />
+                              <span>{isBangla ? 'পূর্ণাঙ্গ রুটিন দেখুন' : 'View Routine'}</span>
+                            </button>
+
+                            <a
+                              href={routine.fileUrl}
+                              download={routine.fileName || `${routine.targetClass}-routine.${routine.fileType === 'pdf' ? 'pdf' : 'png'}`}
+                              className="px-4 py-2 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>{isBangla ? 'ডাউনলোড' : 'Download'}</span>
+                            </a>
+                          </div>
+
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* VIEW 2: WEEKLY SCHEDULE TABLE */}
+                {studentRoutineViewMode === 'slots' && (() => {
                   const myRoutine = routines.find(r => r.batchName === studentBatch);
                   if (!myRoutine || myRoutine.slots.length === 0) {
                     return (
                       <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-2xl">
-                        {isBangla ? 'আপনার ব্যাচের জন্য রুটিন এখনও প্রকাশ হয়নি।' : 'No routine published for your batch yet.'}
+                        {isBangla ? 'আপনার ব্যাচের জন্য কোনো স্লট তালিকা নেই।' : 'No weekly schedule slots for your batch.'}
                       </div>
                     );
                   }
@@ -640,6 +873,7 @@ export const StudentPortal: React.FC = () => {
                     </div>
                   );
                 })()}
+
               </div>
             )}
 
@@ -647,6 +881,89 @@ export const StudentPortal: React.FC = () => {
 
         </div>
       </div>
+
+      {/* ===== STUDENT ROUTINE PREVIEW LIGHTBOX MODAL ===== */}
+      {studentRoutinePreview && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+          onClick={() => setStudentRoutinePreview(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl p-5 sm:p-6 space-y-4 animate-in zoom-in-95 my-6 flex flex-col max-h-[90vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1 rounded-full text-xs font-black bg-maroon-100 text-maroon-900 border border-maroon-200">
+                  {studentRoutinePreview.targetClass}
+                </span>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 line-clamp-1">
+                    {studentRoutinePreview.title}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {studentRoutinePreview.fileName} • {studentRoutinePreview.uploadedAt}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={studentRoutinePreview.fileUrl}
+                  download={studentRoutinePreview.fileName || `${studentRoutinePreview.targetClass}-routine.${studentRoutinePreview.fileType === 'pdf' ? 'pdf' : 'png'}`}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold transition-colors shadow-xs"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{isBangla ? 'ডাউনলোড' : 'Download'}</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setStudentRoutinePreview(null)}
+                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 cursor-pointer"
+                >
+                  <ChevronRight className="w-5 h-5 rotate-90" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content Preview */}
+            <div className="flex-1 overflow-auto bg-slate-100 rounded-2xl p-2 sm:p-4 flex items-center justify-center min-h-[350px]">
+              {studentRoutinePreview.fileType === 'image' || studentRoutinePreview.fileUrl.startsWith('data:image') ? (
+                <img
+                  src={studentRoutinePreview.fileUrl}
+                  alt={studentRoutinePreview.title}
+                  className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-xs"
+                />
+              ) : (
+                <div className="w-full h-[65vh] bg-white rounded-xl p-4 flex flex-col items-center justify-center text-center space-y-4 border border-slate-200">
+                  <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shadow-xs">
+                    <FileText className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-slate-900">{studentRoutinePreview.title}</h4>
+                    <p className="text-xs text-slate-500 mt-1">{studentRoutinePreview.fileName} ({studentRoutinePreview.fileSize})</p>
+                    <p className="text-xs text-maroon-800 font-semibold mt-0.5">{isBangla ? 'শ্রেণী: ' : 'Class: '}{studentRoutinePreview.targetClass}</p>
+                  </div>
+                  {studentRoutinePreview.notes && (
+                    <p className="text-xs text-slate-600 max-w-md bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      "{studentRoutinePreview.notes}"
+                    </p>
+                  )}
+                  <a
+                    href={studentRoutinePreview.fileUrl}
+                    download={studentRoutinePreview.fileName}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold transition-all shadow-md"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>{isBangla ? 'পিডিএফ ফাইল ডাউনলোড করুন' : 'Download PDF Document'}</span>
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

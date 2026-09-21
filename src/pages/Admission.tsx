@@ -24,18 +24,8 @@ export const Admission: React.FC = () => {
     },
     {
       num: '০২',
-      title: 'কাউন্সেলিং ও ডায়াগনস্টিক টেস্ট',
-      desc: 'শিক্ষার্থীর মেধা ও বর্তমান অবস্থা যাচাইয়ের জন্য অভিজ্ঞ মেন্টরের সাথে আলোচনা ও সংক্ষিপ্ত টেস্ট।'
-    },
-    {
-      num: '০৩',
       title: 'ব্যাচ ও শিক্ষক নির্ধারণ',
       desc: 'শিক্ষার্থীর লক্ষ্য ও শিডিউল অনুযায়ী উপযুক্ত ব্যাচে ভর্তি নিশ্চিত করা হয়।'
-    },
-    {
-      num: '০৪',
-      title: 'লেকচার শিট ও আইডি কার্ড সংগ্রহ',
-      desc: 'সাইকি অ্যাকাডেমিক কেয়ারের সমৃদ্ধ লেকচার শিট, রুটিন এবং স্টুডেন্ট আইডি কার্ড গ্রহণ করুন।'
     }
   ] : [
     {
@@ -45,18 +35,8 @@ export const Admission: React.FC = () => {
     },
     {
       num: '02',
-      title: 'Counseling & Diagnostic Test',
-      desc: 'Meet our academic counselors for a friendly diagnostic evaluation to assess current skill depth.'
-    },
-    {
-      num: '03',
       title: 'Batch & Mentor Allocation',
       desc: 'Get placed in a calibrated peer group matching your target goals and schedule preferences.'
-    },
-    {
-      num: '04',
-      title: 'Receive Notes & ID Card',
-      desc: 'Collect spiral-bound PSYCHE lecture guides, student identity credentials, and portal login.'
     }
   ];
 
@@ -78,13 +58,13 @@ export const Admission: React.FC = () => {
         </div>
       </section>
 
-      {/* 4 Step Process */}
+      {/* 2 Step Process */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
         <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-6 sm:p-8">
           <div className="text-xs font-bold uppercase tracking-widest text-maroon-800 mb-4 text-center sm:text-left">
-            {isBangla ? 'ভর্তি প্রক্রিয়ার সহজ ৪টি ধাপ' : 'Simple 4-Step Admission Journey'}
+            {isBangla ? 'ভর্তি প্রক্রিয়ার সহজ ২টি ধাপ' : 'Simple 2-Step Admission Journey'}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {steps.map((step) => (
               <div key={step.num} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 relative">
                 <span className="text-2xl font-black text-rose-400 block mb-1">
@@ -127,9 +107,11 @@ export const Admission: React.FC = () => {
                   : 'Our front desk counselors are available daily from 8:00 AM to 8:30 PM to answer course inquiries, batch availability, and fee details.'}
               </p>
               <div className="pt-2 border-t border-white/20 text-sm">
-                <div className="font-bold text-amber-300 text-lg">+880 1812-345678</div>
+                <a href="tel:+8801683334080" className="font-bold text-amber-300 text-lg hover:underline block">
+                  +880 1683-334080
+                </a>
                 <div className="text-xs text-rose-200 mt-0.5">
-                  {isBangla ? 'ধানমন্ডি সেন্ট্রাল ক্যাম্পাস, ঢাকা' : 'Dhanmondi Central Campus, Dhaka'}
+                  {isBangla ? 'জিইসি মোড়, চট্টগ্রাম-৪০০০, বাংলাদেশ' : 'GEC Circle, Chattogram-4000, Bangladesh'}
                 </div>
               </div>
             </div>

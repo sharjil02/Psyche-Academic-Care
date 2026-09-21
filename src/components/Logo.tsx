@@ -201,9 +201,6 @@ export const PsycheLogo: React.FC<LogoProps> = ({
           <span className="block text-xl sm:text-2xl font-black tracking-tight text-slate-900">
             PSYCHE <span className="text-maroon-800">Academic</span> <span className="text-maroon-500">Care</span>
           </span>
-          <span className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase block">
-            Excellence In Education & Success
-          </span>
         </div>
       )}
     </div>

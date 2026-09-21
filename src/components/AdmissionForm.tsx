@@ -11,7 +11,9 @@ import {
   MapPin, 
   Printer, 
   RefreshCw,
-  Sparkles
+  School,
+  Hash,
+  MessageCircle
 } from 'lucide-react';
 import { coursesData } from '../data/courses';
 import { useLanguage } from '../context/LanguageContext';
@@ -27,12 +29,14 @@ export const AdmissionForm: React.FC<AdmissionFormProps> = ({ initialCourse = ''
     fatherName: '',
     motherName: '',
     phone: '',
+    whatsappName: '',
     email: '',
+    schoolName: '',
+    schoolRoll: '',
     studentClass: '',
     course: initialCourse || '',
     address: '',
-    preferredShift: 'Morning',
-    previousSchool: ''
+    preferredShift: 'Morning'
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -63,10 +67,19 @@ export const AdmissionForm: React.FC<AdmissionFormProps> = ({ initialCourse = ''
     } else if (!/^[0-9+ -]{9,15}$/.test(formData.phone.trim())) {
       newErrors.phone = isBangla ? 'সঠিক ফোন নম্বর প্রদান করুন' : 'Please enter a valid phone number';
     }
+    if (!formData.whatsappName.trim()) {
+      newErrors.whatsappName = isBangla ? 'হোয়াটসঅ্যাপ নাম আবশ্যক' : 'WhatsApp name is required';
+    }
     if (!formData.email.trim()) {
       newErrors.email = isBangla ? 'ইমেইল ঠিকানা আবশ্যক' : 'Email address is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = isBangla ? 'সঠিক ইমেইল ঠিকানা প্রদান করুন' : 'Please enter a valid email address';
+    }
+    if (!formData.schoolName.trim()) {
+      newErrors.schoolName = isBangla ? 'বিদ্যালয় / কলেজের নাম আবশ্যক' : 'School/College name is required';
+    }
+    if (!formData.schoolRoll.trim()) {
+      newErrors.schoolRoll = isBangla ? 'বিদ্যালয়ের রোল নং আবশ্যক' : 'School roll is required';
     }
     if (!formData.studentClass) {
       newErrors.studentClass = isBangla ? 'শ্রেণী নির্বাচন করুন' : 'Please select the student class';
@@ -100,6 +113,31 @@ export const AdmissionForm: React.FC<AdmissionFormProps> = ({ initialCourse = ''
         day: 'numeric',
         year: 'numeric'
       }));
+
+      try {
+        const saved = localStorage.getItem('pschye_admin_applications');
+        const list = saved ? JSON.parse(saved) : [];
+        const newApp = {
+          id: generatedId,
+          studentName: formData.studentName.trim(),
+          fatherName: formData.fatherName.trim(),
+          motherName: formData.motherName.trim(),
+          phone: formData.phone.trim(),
+          whatsappName: formData.whatsappName.trim(),
+          email: formData.email.trim(),
+          studentClass: formData.studentClass,
+          course: formData.course,
+          previousSchool: formData.schoolName.trim(),
+          schoolRoll: formData.schoolRoll.trim(),
+          preferredShift: formData.preferredShift || 'Morning',
+          submissionDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+          status: 'Pending'
+        };
+        localStorage.setItem('pschye_admin_applications', JSON.stringify([newApp, ...list]));
+      } catch (err) {
+        console.error(err);
+      }
+
       setSubmitted(true);
     }
   };
@@ -110,12 +148,14 @@ export const AdmissionForm: React.FC<AdmissionFormProps> = ({ initialCourse = ''
       fatherName: '',
       motherName: '',
       phone: '',
+      whatsappName: '',
       email: '',
+      schoolName: '',
+      schoolRoll: '',
       studentClass: '',
       course: '',
       address: '',
-      preferredShift: 'Morning',
-      previousSchool: ''
+      preferredShift: 'Morning'
     });
     setErrors({});
     setSubmitted(false);
@@ -156,12 +196,20 @@ export const AdmissionForm: React.FC<AdmissionFormProps> = ({ initialCourse = ''
               <span className="font-bold text-slate-800 text-sm">{formData.studentName}</span>
             </div>
             <div>
-              <span className="text-slate-500 block">{isBangla ? 'শ্রেণী:' : 'Class:'}</span>
-              <span className="font-bold text-slate-800 text-sm">{formData.studentClass}</span>
+              <span className="text-slate-500 block">{isBangla ? 'শ্রেণী ও রোল:' : 'Class & Roll:'}</span>
+              <span className="font-bold text-slate-800 text-sm">{formData.studentClass} (রোল: {formData.schoolRoll})</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">{isBangla ? 'বিদ্যালয়:' : 'School:'}</span>
+              <span className="font-bold text-slate-800 text-sm truncate block">{formData.schoolName}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">{isBangla ? 'হোয়াটসঅ্যাপ নাম:' : 'WhatsApp Name:'}</span>
+              <span className="font-bold text-slate-800 text-sm truncate block">{formData.whatsappName}</span>
             </div>
             <div>
               <span className="text-slate-500 block">{isBangla ? 'নির্বাচিত প্রোগ্রাম:' : 'Enrolled Program:'}</span>
-              <span className="font-bold text-slate-800 text-sm">{formData.course}</span>
+              <span className="font-bold text-slate-800 text-sm truncate block">{formData.course}</span>
             </div>
             <div>
               <span className="text-slate-500 block">{isBangla ? 'আবেদনের তারিখ:' : 'Submission Date:'}</span>
@@ -192,21 +240,15 @@ export const AdmissionForm: React.FC<AdmissionFormProps> = ({ initialCourse = ''
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-10 shadow-sm">
-      <div className="mb-8 pb-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h3 className="text-2xl font-bold text-slate-900">
-            {isBangla ? 'শিক্ষার্থী ভর্তি ফরম' : 'Student Admission Form'}
-          </h3>
-          <p className="text-sm text-slate-500 mt-1">
-            {isBangla 
-              ? 'সাইকি একাডেমিক কেয়ারে ভর্তির জন্য নিচের তথ্যগুলো পূরণ করুন' 
-              : 'Fill in the information below to enroll at PSYCHE Academic Care'}
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-maroon-50 text-maroon-800 text-xs font-bold border border-maroon-200 w-fit">
-          <Sparkles className="w-3.5 h-3.5 text-maroon-600" />
-          <span>{isBangla ? 'সেশন ২০২৬-২০২৭' : 'Session 2026-2027'}</span>
-        </div>
+      <div className="mb-8 pb-6 border-b border-slate-100">
+        <h3 className="text-2xl font-bold text-slate-900">
+          {isBangla ? 'শিক্ষার্থী ভর্তি ফরম' : 'Student Admission Form'}
+        </h3>
+        <p className="text-sm text-slate-500 mt-1">
+          {isBangla 
+            ? 'সাইকি একাডেমিক কেয়ারে ভর্তির জন্য নিচের তথ্যগুলো পূরণ করুন' 
+            : 'Fill in the information below to enroll at PSYCHE Academic Care'}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -284,7 +326,7 @@ export const AdmissionForm: React.FC<AdmissionFormProps> = ({ initialCourse = ''
           </div>
         </div>
 
-        {/* Contact Grid */}
+        {/* Contact Phone & WhatsApp Name Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
@@ -312,24 +354,100 @@ export const AdmissionForm: React.FC<AdmissionFormProps> = ({ initialCourse = ''
 
           <div>
             <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-maroon-700" />
-              <span>{isBangla ? 'ইমেইল ঠিকানা *' : 'Email Address *'}</span>
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{isBangla ? 'হোয়াটসঅ্যাপ নাম *' : 'WhatsApp Name *'}</span>
             </label>
             <input
-              type="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              name="whatsappName"
+              value={formData.whatsappName}
               onChange={handleChange}
-              placeholder="guardian.email@example.com"
+              placeholder={isBangla ? 'যেমন: মাহির ফয়সাল' : 'e.g. Mahir Faysal'}
               className={`w-full px-4 py-3 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 ${
-                errors.email 
+                errors.whatsappName 
                   ? 'border-red-300 focus:ring-red-200 bg-red-50/20' 
                   : 'border-slate-200 focus:border-maroon-600 focus:ring-maroon-100 bg-slate-50/30'
               }`}
             />
-            {errors.email && (
+            {errors.whatsappName && (
               <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" /> {errors.email}
+                <AlertCircle className="w-3 h-3" /> {errors.whatsappName}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Email Address */}
+        <div>
+          <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <Mail className="w-3.5 h-3.5 text-maroon-700" />
+            <span>{isBangla ? 'ইমেইল ঠিকানা *' : 'Email Address *'}</span>
+          </label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="guardian.email@example.com"
+            className={`w-full px-4 py-3 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 ${
+              errors.email 
+                ? 'border-red-300 focus:ring-red-200 bg-red-50/20' 
+                : 'border-slate-200 focus:border-maroon-600 focus:ring-maroon-100 bg-slate-50/30'
+            }`}
+          />
+          {errors.email && (
+            <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> {errors.email}
+            </p>
+          )}
+        </div>
+
+        {/* School Name & School Roll Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="sm:col-span-2">
+            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <School className="w-3.5 h-3.5 text-maroon-700" />
+              <span>{isBangla ? 'বিদ্যালয় / কলেজের নাম *' : 'School / College Name *'}</span>
+            </label>
+            <input
+              type="text"
+              name="schoolName"
+              value={formData.schoolName}
+              onChange={handleChange}
+              placeholder={isBangla ? 'যেমন: চট্টগ্রাম কলেজিয়েট স্কুল' : 'e.g. Chittagong Collegiate School'}
+              className={`w-full px-4 py-3 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 ${
+                errors.schoolName 
+                  ? 'border-red-300 focus:ring-red-200 bg-red-50/20' 
+                  : 'border-slate-200 focus:border-maroon-600 focus:ring-maroon-100 bg-slate-50/30'
+              }`}
+            />
+            {errors.schoolName && (
+              <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {errors.schoolName}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <Hash className="w-3.5 h-3.5 text-maroon-700" />
+              <span>{isBangla ? 'বিদ্যালয়ের রোল নং *' : 'School Roll *'}</span>
+            </label>
+            <input
+              type="text"
+              name="schoolRoll"
+              value={formData.schoolRoll}
+              onChange={handleChange}
+              placeholder={isBangla ? 'যেমন: ১২' : 'e.g. 12'}
+              className={`w-full px-4 py-3 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 ${
+                errors.schoolRoll 
+                  ? 'border-red-300 focus:ring-red-200 bg-red-50/20' 
+                  : 'border-slate-200 focus:border-maroon-600 focus:ring-maroon-100 bg-slate-50/30'
+              }`}
+            />
+            {errors.schoolRoll && (
+              <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {errors.schoolRoll}
               </p>
             )}
           </div>
@@ -353,15 +471,14 @@ export const AdmissionForm: React.FC<AdmissionFormProps> = ({ initialCourse = ''
               }`}
             >
               <option value="">{isBangla ? 'শ্রেণী নির্বাচন করুন' : 'Select Student Class'}</option>
-              <option value="Class 6">{isBangla ? 'ষষ্ঠ শ্রেণী (Class 6)' : 'Class 6'}</option>
-              <option value="Class 7">{isBangla ? 'সপ্তম শ্রেণী (Class 7)' : 'Class 7'}</option>
-              <option value="Class 8">{isBangla ? 'অষ্টম শ্রেণী (Class 8)' : 'Class 8'}</option>
-              <option value="Class 9 (Science)">{isBangla ? 'নবম শ্রেণী - বিজ্ঞান' : 'Class 9 (Science)'}</option>
-              <option value="Class 9 (Commerce)">{isBangla ? 'নবম শ্রেণী - ব্যবসায় শিক্ষা' : 'Class 9 (Commerce)'}</option>
-              <option value="Class 10 (SSC 2026/27)">{isBangla ? 'দশম শ্রেণী (এসএসসি ২০২৬/২৭)' : 'Class 10 (SSC 2026/2027)'}</option>
-              <option value="Class 11 (HSC 1st Year)">{isBangla ? 'একাদশ শ্রেণী (এইচএসসি ১ম বর্ষ)' : 'Class 11 (HSC 1st Year)'}</option>
-              <option value="Class 12 (HSC 2nd Year)">{isBangla ? 'দ্বাদশ শ্রেণী (এইচএসসি ২য় বর্ষ)' : 'Class 12 (HSC 2nd Year)'}</option>
-              <option value="HSC Passed (Admission Aspirant)">{isBangla ? 'এইচএসসি উত্তীর্ণ (ভর্তি পরীক্ষার্থী)' : 'HSC Passed (Admission Aspirant)'}</option>
+              <option value="Class 8">{isBangla ? '৮ম শ্রেণি (Class 8)' : 'Class 8'}</option>
+              <option value="Class 9 (Science)">{isBangla ? '৯ম শ্রেণি - বিজ্ঞান (Class 9 Science)' : 'Class 9 (Science)'}</option>
+              <option value="Class 9 (Commerce)">{isBangla ? '৯ম শ্রেণি - ব্যবসায় শিক্ষা (Class 9 Commerce)' : 'Class 9 (Commerce)'}</option>
+              <option value="Class 10 (Science)">{isBangla ? '১০ম শ্রেণি - বিজ্ঞান (Class 10 Science)' : 'Class 10 (Science)'}</option>
+              <option value="Class 10 (Commerce)">{isBangla ? '১০ম শ্রেণি - ব্যবসায় শিক্ষা (Class 10 Commerce)' : 'Class 10 (Commerce)'}</option>
+              <option value="SSC Special Batch">{isBangla ? 'এসএসসি স্পেশাল ব্যাচ (SSC Special Batch)' : 'SSC Special Batch'}</option>
+              <option value="HSC (Science)">{isBangla ? 'এইচএসসি - বিজ্ঞান (HSC Science)' : 'HSC (Science)'}</option>
+              <option value="HSC (Commerce)">{isBangla ? 'এইচএসসি - ব্যবসায় শিক্ষা (HSC Commerce)' : 'HSC (Commerce)'}</option>
             </select>
             {errors.studentClass && (
               <p className="text-xs text-red-600 mt-1 flex items-center gap-1">

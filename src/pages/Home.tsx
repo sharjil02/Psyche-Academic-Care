@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Hero } from '../components/Hero';
 import { SectionTitle } from '../components/SectionTitle';
 import { ResultCard } from '../components/ResultCard';
 import { resultsData, statisticsOverview } from '../data/results';
 import { initialAdminNotices, AdminNotice } from '../data/adminData';
+import { StudentResult } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { 
   ArrowRight, 
@@ -13,17 +14,47 @@ import {
   ShieldCheck, 
   GraduationCap, 
   Microscope, 
-  Lightbulb, 
-  Layers,
-  Bell,
+  BookOpen, 
+  Target, 
+  CheckCircle2, 
   Calendar,
   X,
   AlertCircle,
+  Bell,
+  Layers,
+  Lightbulb,
 } from 'lucide-react';
 
 export const Home: React.FC = () => {
   const { t, isBangla } = useLanguage();
-  const featuredResults = resultsData.slice(0, 3);
+  const [featuredResults, setFeaturedResults] = useState<StudentResult[]>(() => {
+    try {
+      const saved = localStorage.getItem('psyche_public_results');
+      const list = saved ? JSON.parse(saved) : resultsData;
+      return list.slice(0, 3);
+    } catch {
+      return resultsData.slice(0, 3);
+    }
+  });
+
+  useEffect(() => {
+    const handleResultsUpdate = () => {
+      try {
+        const saved = localStorage.getItem('psyche_public_results');
+        const list = saved ? JSON.parse(saved) : resultsData;
+        setFeaturedResults(list.slice(0, 3));
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    window.addEventListener('storage', handleResultsUpdate);
+    window.addEventListener('resultsUpdate', handleResultsUpdate);
+    return () => {
+      window.removeEventListener('storage', handleResultsUpdate);
+      window.removeEventListener('resultsUpdate', handleResultsUpdate);
+    };
+  }, []);
+
   const [selectedNoticeModal, setSelectedNoticeModal] = useState<AdminNotice | null>(null);
 
   const [homeNotices] = useState<AdminNotice[]>(() => {

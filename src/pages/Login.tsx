@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { PsycheLogo } from '../components/Logo';
 import { mockStudentProfile } from '../data/studentPortalData';
+import { initialAdminStudents } from '../data/adminData';
 import { useLanguage } from '../context/LanguageContext';
 
 export type UserRole = 'student' | 'admin';
@@ -35,13 +36,30 @@ export const Login: React.FC = () => {
   const [showForgotModal, setShowForgotModal] = useState(false);
 
   // Quick fill demo helper
-  const handleQuickFill = (targetRole: UserRole) => {
-    setRole(targetRole);
+  const handleQuickFill = (targetChoice: 'student8' | 'student10' | 'admin') => {
     setErrorMessage('');
-    if (targetRole === 'student') {
+    if (targetChoice === 'student8') {
+      setRole('student');
+      setIdentifier('PAC-2026-8848');
+      setPassword('student123');
+    } else if (targetChoice === 'student9') {
+      setRole('student');
+      setIdentifier('PAC-2026-8846');
+      setPassword('student123');
+    } else if (targetChoice === 'student10') {
+      setRole('student');
       setIdentifier(mockStudentProfile.studentId);
       setPassword('student123');
+    } else if (targetChoice === 'studentSSC') {
+      setRole('student');
+      setIdentifier('PAC-2026-8843');
+      setPassword('student123');
+    } else if (targetChoice === 'studentHSC') {
+      setRole('student');
+      setIdentifier('PAC-2026-8844');
+      setPassword('student123');
     } else {
+      setRole('admin');
       setIdentifier('admin@psyche.edu.bd');
       setPassword('admin123');
     }
@@ -70,13 +88,31 @@ export const Login: React.FC = () => {
     setTimeout(() => {
       setIsLoading(false);
 
+      let studentName = mockStudentProfile.name;
+      let studentId = mockStudentProfile.studentId;
+      let studentClass = 'Class 10';
+
+      if (role === 'student') {
+        const adminStudents = JSON.parse(localStorage.getItem('pschye_admin_students') || '[]');
+        const allStudents = [...adminStudents, ...initialAdminStudents];
+        const found = allStudents.find((s: any) => s.studentId?.toLowerCase() === identifier.trim().toLowerCase());
+        if (found) {
+          studentName = found.name;
+          studentId = found.studentId;
+          studentClass = found.currentClass;
+        } else if (identifier.includes('8848') || identifier.toLowerCase().includes('class 8') || identifier.toLowerCase().includes('farhan')) {
+          studentName = 'Farhan Ahmed';
+          studentId = 'PAC-2026-8848';
+          studentClass = 'Class 8';
+        }
+      }
+
       const userSession = {
         role,
-        name: role === 'student' 
-          ? mockStudentProfile.name 
-          : 'Dr. Mahfuzul Alam (Admin)',
+        name: role === 'student' ? studentName : 'Dr. Mahfuzul Alam (Admin)',
         identifier: identifier.trim(),
-        studentId: role === 'student' ? mockStudentProfile.studentId : undefined,
+        studentId: role === 'student' ? studentId : undefined,
+        currentClass: role === 'student' ? studentClass : undefined,
         avatar: role === 'student' 
           ? mockStudentProfile.avatar 
           : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
@@ -165,31 +201,88 @@ export const Login: React.FC = () => {
               <span>{isBangla ? 'এক ক্লিকে ডেমো লগইন:' : 'Quick Demo 1-Click Fill:'}</span>
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
               <button
                 type="button"
-                onClick={() => handleQuickFill('student')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-                  role === 'student' 
-                    ? 'bg-maroon-50 border-maroon-200 text-maroon-800' 
+                onClick={() => handleQuickFill('student8')}
+                className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                  identifier === 'PAC-2026-8848' 
+                    ? 'bg-maroon-800 border-maroon-900 text-white shadow-xs' 
                     : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
                 }`}
+                title="Login as Farhan Ahmed (Class 8)"
               >
-                <GraduationCap className="w-3.5 h-3.5 text-maroon-800" />
-                <span>{isBangla ? 'ডেমো শিক্ষার্থী' : 'Demo Student'}</span>
+                <GraduationCap className="w-3.5 h-3.5 text-maroon-600" />
+                <span className="truncate">{isBangla ? '৮ম শ্রেণি' : 'Class 8'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickFill('student9')}
+                className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                  identifier === 'PAC-2026-8846' 
+                    ? 'bg-maroon-800 border-maroon-900 text-white shadow-xs' 
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+                title="Login as Arafat Karim (Class 9 Science)"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-maroon-600" />
+                <span className="truncate">{isBangla ? '৯ম শ্রেণি' : 'Class 9'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickFill('student10')}
+                className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                  identifier === mockStudentProfile.studentId 
+                    ? 'bg-maroon-800 border-maroon-900 text-white shadow-xs' 
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+                title="Login as Sadman Sakib (Class 10 Science)"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-maroon-600" />
+                <span className="truncate">{isBangla ? '১০ম শ্রেণি' : 'Class 10'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickFill('studentSSC')}
+                className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                  identifier === 'PAC-2026-8843' 
+                    ? 'bg-maroon-800 border-maroon-900 text-white shadow-xs' 
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+                title="Login as Tasnim Jahan (SSC Special Batch)"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-maroon-600" />
+                <span className="truncate">{isBangla ? 'SSC স্পেশাল' : 'SSC Special'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickFill('studentHSC')}
+                className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                  identifier === 'PAC-2026-8844' 
+                    ? 'bg-maroon-800 border-maroon-900 text-white shadow-xs' 
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+                title="Login as Zubair Hossain (HSC Science)"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-maroon-600" />
+                <span className="truncate">{isBangla ? 'এইচএসসি' : 'HSC'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleQuickFill('admin')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold border transition-colors flex flex-col items-center justify-center gap-1 cursor-pointer ${
                   role === 'admin' 
                     ? 'bg-slate-950 border-slate-800 text-white' 
                     : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <Shield className="w-3.5 h-3.5 text-amber-300" />
-                <span>{isBangla ? 'ডেমো অ্যাডমিন' : 'Demo Admin'}</span>
+                <span className="truncate">{isBangla ? 'অ্যাডমিন' : 'Admin'}</span>
               </button>
             </div>
           </div>
@@ -334,7 +427,7 @@ export const Login: React.FC = () => {
               </p>
             </div>
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1">
-              <div><strong>{isBangla ? 'অ্যাডমিন হটলাইন:' : 'Admin Hotline:'}</strong> +880 1812-345678</div>
+              <div><strong>{isBangla ? 'অ্যাডমিন হটলাইন:' : 'Admin Hotline:'}</strong> <a href="tel:+8801683334080" className="hover:underline font-semibold text-maroon-800">+880 1683-334080</a></div>
               <div><strong>{isBangla ? 'সাপোর্ট ডেস্ক:' : 'Support Desk:'}</strong> support@psyche.edu.bd</div>
             </div>
             <button
