@@ -114,7 +114,7 @@ export const Footer: React.FC = () => {
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-maroon-800 shrink-0" />
-                <span>admissions@pschye.edu.bd</span>
+                <span>admissions@psyche.edu.bd</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Clock className="w-4 h-4 text-maroon-800 shrink-0 mt-0.5" />

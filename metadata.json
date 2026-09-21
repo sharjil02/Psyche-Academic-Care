@@ -1,6 +1,6 @@
 {
-  "name": "PSCHYE Academic Care",
-  "description": "Official modern educational website for PSCHYE Academic Care - Empowering students with quality coaching, expert teachers, and proven academic success.",
+  "name": "Psyche Academic Care",
+  "description": "Official modern educational website for Psyche Academic Care - Empowering students with quality coaching, expert teachers, and proven academic success.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -45,8 +45,8 @@ Official modern web application and management platform for **PSYCHE Academic Ca
 
 1. Clone repository:
    ```bash
-   git clone https://github.com/sharjil02/-PSYCHE-Academic-Care.git
-   cd -PSYCHE-Academic-Care
+   git clone https://github.com/sharjil02/Psyche-Academic-Care.git
+   cd Psyche-Academic-Care
    ```
 
 2. Install dependencies:

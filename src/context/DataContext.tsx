@@ -1,35 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Teacher, Notice } from '../types';
 import { 
-  Teacher, 
-  Notice, 
-  Student, 
+  AdminStudent as Student, 
   AdmissionApplication, 
-  ExamResult, 
-  FeeInvoice, 
-  Batch 
-} from '../types';
-import { 
-  teachers as initialTeachers, 
-  notices as initialNotices, 
-  students as initialStudents, 
-  admissionApplications as initialApplications,
-  examResults as initialResults,
-  feeInvoices as initialInvoices,
-  batches as initialBatches,
-  classRoutine as initialRoutine
-} from '../data/mockData';
-
-export interface RoutineItem {
-  id: string;
-  day: string;
-  time: string;
-  subject: string;
-  teacher: string;
-  room: string;
-  batch?: string;
-  date?: string;
-  topics?: string;
-}
+  AdminExamResult as ExamResult, 
+  AdminInvoice as FeeInvoice, 
+  BatchInfo as Batch,
+  AdminRoutine as RoutineItem,
+  initialAdminStudents as initialStudents,
+  initialAdminApplications as initialApplications,
+  initialAdminResults as initialResults,
+  initialAdminInvoices as initialInvoices,
+  initialAdminBatches as initialBatches,
+  initialAdminRoutines as initialRoutine
+} from '../data/adminData';
+import { teachersData as initialTeachers } from '../data/teachers';
+import { noticesData as initialNotices } from '../data/notices';
 
 interface DataContextType {
   teachers: Teacher[];

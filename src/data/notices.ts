@@ -7,12 +7,12 @@ export const noticesData: Notice[] = [
     date: 'September 15, 2026',
     category: 'Admission Notice',
     shortDescription: 'Fresh enrollment is now open for upcoming SSC and HSC batches. Limited seats per batch with early registration benefits.',
-    content: `We are pleased to announce that registrations are now open for the 2026-2027 academic session for Class 9, Class 10 (SSC), and Class 11-12 (HSC) batches at PSCHYE Academic Care.
+    content: `We are pleased to announce that registrations are now open for the 2026-2027 academic session for Class 9, Class 10 (SSC), and Class 11-12 (HSC) batches at Psyche Academic Care.
 
 Key Admission Highlights:
 1. Early bird tuition concession available until October 15, 2026.
 2. Diagnostic screening test to place students in appropriate speed groups.
-3. Complimentary set of PSCHYE printed lecture notes upon enrollment.
+3. Complimentary set of Psyche printed lecture notes upon enrollment.
 4. Batch size strictly limited to ensure personal teacher interaction.
 
 Interested students and parents are requested to fill out the online admission form or visit our front desk between 9:00 AM and 8:00 PM daily.`,
@@ -24,7 +24,7 @@ Interested students and parents are requested to fill out the online admission f
     date: 'September 12, 2026',
     category: 'Exam Notice',
     shortDescription: 'Upcoming Term Assessment-II will commence from September 24 for all enrolled students across school and board levels.',
-    content: `All enrolled students of PSCHYE Academic Care are hereby informed that the Term Assessment-II will be conducted from September 24 to October 02, 2026.
+    content: `All enrolled students of Psyche Academic Care are hereby informed that the Term Assessment-II will be conducted from September 24 to October 02, 2026.
 
 Important Instructions:
 - Admit cards will be available on the Student Portal starting September 20.
@@ -39,7 +39,7 @@ Important Instructions:
     date: 'September 08, 2026',
     category: 'Holiday Notice',
     shortDescription: 'The coaching center will observe academic recess from October 10 to October 16. Front desk services will remain open.',
-    content: `Please take note that regular academic sessions at PSCHYE Academic Care will remain paused from October 10 to October 16, 2026 on the occasion of the Autumn holidays.
+    content: `Please take note that regular academic sessions at Psyche Academic Care will remain paused from October 10 to October 16, 2026 on the occasion of the Autumn holidays.
 
 However:
 - The administrative office, admission desk, and phone inquiries will function normally from 10:00 AM to 5:00 PM.
@@ -53,7 +53,7 @@ However:
     date: 'September 02, 2026',
     category: 'Result Publication',
     shortDescription: 'The comprehensive scorecards and merit rankings for the SSC Pre-Test Examination have been officially published.',
-    content: `The results of the SSC Pre-Test Examination 2026 have been published. Out of 142 examinees, 138 students achieved GPA 5.00, marking an exceptional 97.2% Golden & GPA 5 rate for PSCHYE Academic Care.
+    content: `The results of the SSC Pre-Test Examination 2026 have been published. Out of 142 examinees, 138 students achieved GPA 5.00, marking an exceptional 97.2% Golden & GPA 5 rate for Psyche Academic Care.
 
 Students can view their subject-wise marksheet and comparative percentile ranking by logging into their Student Portal. Top rank holders will receive special merit crests during next week's award ceremony.`,
     isUrgent: false
@@ -64,7 +64,7 @@ Students can view their subject-wise marksheet and comparative percentile rankin
     date: 'August 28, 2026',
     category: 'Important Announcement',
     shortDescription: 'Campus upgrade: 4K interactive smart panels installed to enhance 3D scientific diagrams, formulas, and visual problem demonstrations.',
-    content: `As part of our continuous commitment to world-class learning infrastructure, PSCHYE Academic Care has successfully outfitted all classrooms with 4K UHD digital smartboards and high-fidelity audio equipment.
+    content: `As part of our continuous commitment to world-class learning infrastructure, Psyche Academic Care has successfully outfitted all classrooms with 4K UHD digital smartboards and high-fidelity audio equipment.
 
 Teachers can now illustrate 3D molecular bonds, architectural vector mechanics, and live mathematical graphing seamlessly. We invite parents to visit during open office hours to tour the upgraded learning environment.`,
     isUrgent: false

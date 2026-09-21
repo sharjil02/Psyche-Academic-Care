@@ -12,7 +12,7 @@ export const resultsData: StudentResult[] = [
     institution: 'Notre Dame College',
     examType: 'HSC Science',
     photo: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=500&q=80',
-    testimonial: 'The rigorous model tests and formula clinics at PSCHYE Academic Care made the actual board exam feel completely natural and stress-free.'
+    testimonial: 'The rigorous model tests and formula clinics at Psyche Academic Care made the actual board exam feel completely natural and stress-free.'
   },
   {
     id: 'res-02',
@@ -64,7 +64,7 @@ export const resultsData: StudentResult[] = [
     institution: 'Dhaka College',
     examType: 'HSC Science',
     photo: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=500&q=80',
-    testimonial: 'PSCHYE Academic Care was the turning point in my academic life. The teachers are always available for consultation.'
+    testimonial: 'Psyche Academic Care was the turning point in my academic life. The teachers are always available for consultation.'
   },
   {
     id: 'res-06',
@@ -103,7 +103,7 @@ export const resultsData: StudentResult[] = [
     institution: 'Viqarunnisa Noon School',
     examType: 'Junior Scholarship',
     photo: 'https://images.unsplash.com/photo-1548142813-c348350df52b?auto=format&fit=crop&w=500&q=80',
-    testimonial: 'PSCHYE helped me build solid basics in math and science when I was just starting out in Class 7.'
+    testimonial: 'Psyche helped me build solid basics in math and science when I was just starting out in Class 7.'
   }
 ];
 
@@ -122,7 +122,7 @@ export const testimonialsData: Testimonial[] = [
     name: 'Mrs. Selina Parveen',
     role: 'Guardian of SSC Candidate (2026)',
     achievement: 'Son secured GPA 5.00 (Golden)',
-    content: 'As a working mother, I was worried about my son’s preparation. PSCHYE Academic Care provided regular SMS attendance updates, weekly test progress, and caring mentors who treated him like family.',
+    content: 'As a working mother, I was worried about my son’s preparation. Psyche Academic Care provided regular SMS attendance updates, weekly test progress, and caring mentors who treated him like family.',
     photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
     rating: 5
   },
@@ -131,7 +131,7 @@ export const testimonialsData: Testimonial[] = [
     name: 'Arafat Rahman Siddiqui',
     role: 'HSC Batch Topper (1st Dhaka Board)',
     achievement: 'GPA 5.00 | Admitted to BUET',
-    content: 'The depth of problem sets and model tests at PSCHYE is unmatched. They do not just teach you how to pass; they train you to think critically like an engineer or scientist from day one.',
+    content: 'The depth of problem sets and model tests at Psyche is unmatched. They do not just teach you how to pass; they train you to think critically like an engineer or scientist from day one.',
     photo: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
     rating: 5
   },
@@ -140,7 +140,7 @@ export const testimonialsData: Testimonial[] = [
     name: 'Engr. Kamal Hossain',
     role: 'Guardian of Medical Aspirant',
     achievement: 'Daughter admitted to DMC',
-    content: 'The faculty’s commitment at PSCHYE Academic Care is truly commendable. The doubt-clearing labs and disciplined testing environment gave my daughter the poise she needed for medical entrance exams.',
+    content: 'The faculty’s commitment at Psyche Academic Care is truly commendable. The doubt-clearing labs and disciplined testing environment gave my daughter the poise she needed for medical entrance exams.',
     photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80',
     rating: 5
   },
@@ -149,7 +149,7 @@ export const testimonialsData: Testimonial[] = [
     name: 'Sadia Afreen Chowdhury',
     role: 'BUET CSE Student (Alumna)',
     achievement: 'BUET Rank #62',
-    content: 'From Class 9 until my admission exams, PSCHYE was my second home. The faculty taught with tremendous patience and never hesitated to explain concepts multiple times until I mastered them.',
+    content: 'From Class 9 until my admission exams, Psyche was my second home. The faculty taught with tremendous patience and never hesitated to explain concepts multiple times until I mastered them.',
     photo: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&q=80',
     rating: 5
   }

@@ -76,7 +76,7 @@ export const coursesData: Course[] = [
       'Deep mathematical proofs and physics numerical drills',
       'Classroom exercise breakdowns with shortcut methods',
       'Weekly CQ written evaluations graded with board standards',
-      'Exclusive PSCHYE curated lecture sheets'
+      'Exclusive Psyche curated lecture sheets'
     ],
     image: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80'
   },
@@ -154,7 +154,7 @@ export const coursesData: Course[] = [
     targetAudience: 'Class 10 SSC Candidates',
     features: [
       'Comprehensive crash revision of all compulsory subjects',
-      'Exclusive PSCHYE Suggestion & Final Model Question booklet',
+      'Exclusive Psyche Suggestion & Final Model Question booklet',
       'Daily 30-minute rapid MCQ sprint tests with instant results',
       'Stress management and test-day presentation strategies'
     ],

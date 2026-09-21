@@ -66,7 +66,7 @@ export const mockStudentProfile: StudentPortalProfile = {
   rollNumber: '07',
   batch: 'Morning Elite Batch-A',
   bloodGroup: 'B+ (Positive)',
-  email: 'sadman.sakib@student.pschye.edu',
+  email: 'sadman.sakib@student.psyche.edu.bd',
   phone: '+880 1712-345678',
   guardianName: 'Dr. Rafiqul Islam',
   guardianPhone: '+880 1819-876543',

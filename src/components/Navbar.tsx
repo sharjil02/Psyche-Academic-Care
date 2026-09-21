@@ -80,7 +80,7 @@ export const Navbar: React.FC = () => {
             </span>
             <span className="hidden sm:flex items-center gap-1.5 hover:text-white transition-colors">
               <Mail className="w-3.5 h-3.5 text-maroon-400" />
-              <span>admissions@pschye.edu.bd</span>
+              <span>admissions@psyche.edu.bd</span>
             </span>
             <span className="hidden md:flex items-center gap-1.5 text-slate-400">
               <Clock className="w-3.5 h-3.5 text-amber-400" />

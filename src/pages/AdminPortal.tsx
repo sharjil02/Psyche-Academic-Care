@@ -201,7 +201,7 @@ export const AdminPortal: React.FC = () => {
     const session = {
       role: 'admin',
       name: 'Dr. Mahfuzul Alam (Director)',
-      identifier: 'admin@pschye.edu.bd',
+      identifier: 'admin@psyche.edu.bd',
       loginTime: new Date().toISOString()
     };
     localStorage.setItem('pschye_auth_user', JSON.stringify(session));
@@ -2073,7 +2073,7 @@ export const AdminPortal: React.FC = () => {
                   { label: isBangla ? 'বিষয় দক্ষতা' : 'Subject Expertise', field: 'subjectExpertise', placeholder: 'e.g. Physics, Math' },
                   { label: isBangla ? 'শিক্ষাগত যোগ্যতা' : 'Qualification', field: 'qualification', placeholder: 'e.g. M.Sc. BUET' },
                   { label: isBangla ? 'ফোন নম্বর' : 'Phone Number', field: 'phone', placeholder: '+880 1X00-000000' },
-                  { label: isBangla ? 'ইমেইল' : 'Email', field: 'email', placeholder: 'name@pschye.edu.bd' },
+                  { label: isBangla ? 'ইমেইল' : 'Email', field: 'email', placeholder: 'name@psyche.edu.bd' },
                 ].map(({ label, field, placeholder }) => (
                   <div key={field}>
                     <label className="block text-xs font-bold text-slate-600 mb-1">{label}</label>
