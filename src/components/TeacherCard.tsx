@@ -1,6 +1,6 @@
 import React from 'react';
 import { Teacher } from '../types';
-import { Briefcase, GraduationCap, Star, BookOpen } from 'lucide-react';
+import { Briefcase, GraduationCap, BookOpen } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 interface TeacherCardProps {
@@ -14,16 +14,12 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({ teacher }) => {
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-lg hover:border-maroon-300 transition-all duration-300 flex flex-col h-full overflow-hidden group">
       {/* Top Header with Avatar */}
       <div className="p-6 pb-4 flex items-start gap-4">
-        <div className="relative shrink-0">
+        <div className="shrink-0">
           <img
             src={teacher.photo}
             alt={teacher.name}
             className="w-20 h-20 rounded-2xl object-cover border-2 border-slate-100 group-hover:border-maroon-400 transition-colors shadow-xs"
           />
-          <div className="absolute -bottom-2 -right-2 bg-amber-400 text-slate-900 font-bold text-[11px] px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow-xs">
-            <Star className="w-3 h-3 fill-current text-slate-900" />
-            <span>{teacher.rating.toFixed(1)}</span>
-          </div>
         </div>
 
         <div className="flex-1 min-w-0">
