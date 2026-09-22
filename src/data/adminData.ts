@@ -63,11 +63,17 @@ export interface BatchInfo {
   name: string;
   code: string;
   targetClass: string;
-  instructor: string;
-  schedule: string;
-  room: string;
-  enrolledCount: number;
-  capacity: number;
+  instructor?: string;
+  schedule?: string;
+  room?: string;
+  enrolledCount?: number;
+  capacity?: number;
+  photo?: string;
+  monthlyFee?: number;
+  shortDescription?: string;
+  fullDescription?: string;
+  features?: string[];
+  status?: 'Admissions Open' | 'Ongoing' | 'Full' | 'Upcoming';
 }
 
 export const initialAdminStudents: AdminStudent[] = [
@@ -355,7 +361,12 @@ export const initialAdminBatches: BatchInfo[] = [
     schedule: 'Sun, Tue, Thu (8:00 AM - 10:30 AM)',
     room: 'Hall A (Smart Room)',
     enrolledCount: 18,
-    capacity: 20
+    capacity: 20,
+    photo: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80',
+    monthlyFee: 1800,
+    shortDescription: 'Core foundation in General Mathematics, Science, and English for Class 8 junior high students.',
+    features: ['Weekly chapter quizzes', 'Math speed arithmetic drills', 'Special doubt clearing sessions'],
+    status: 'Admissions Open'
   },
   {
     id: 'b-c9-sci',
@@ -366,7 +377,12 @@ export const initialAdminBatches: BatchInfo[] = [
     schedule: 'Sat, Mon, Wed (8:00 AM - 10:30 AM)',
     room: 'Hall B (Science Block)',
     enrolledCount: 20,
-    capacity: 22
+    capacity: 22,
+    photo: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=800&q=80',
+    monthlyFee: 2400,
+    shortDescription: 'Comprehensive guidance in Physics kinematics, Chemistry reactions, and Higher Math calculus fundamentals.',
+    features: ['Physics numerical mastery', 'Chemistry reaction equation lab', 'Bi-weekly Creative Question (CQ) practice'],
+    status: 'Admissions Open'
   },
   {
     id: 'b-c9-com',
@@ -377,7 +393,12 @@ export const initialAdminBatches: BatchInfo[] = [
     schedule: 'Sun, Tue, Thu (10:45 AM - 1:15 PM)',
     room: 'Room 102',
     enrolledCount: 16,
-    capacity: 20
+    capacity: 20,
+    photo: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80',
+    monthlyFee: 2200,
+    shortDescription: 'Interactive coaching in Accounting double-entry bookkeeping, Finance, and Business Organization.',
+    features: ['Ledger & Trial Balance mastery', 'Real-world business case studies', 'Board format structured examinations'],
+    status: 'Admissions Open'
   },
   {
     id: 'b-c10-sci',
@@ -388,7 +409,12 @@ export const initialAdminBatches: BatchInfo[] = [
     schedule: 'Sat, Mon, Wed (10:45 AM - 1:15 PM)',
     room: 'Hall A (Smart Lab)',
     enrolledCount: 21,
-    capacity: 22
+    capacity: 22,
+    photo: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80',
+    monthlyFee: 2600,
+    shortDescription: 'Rigorous SSC board question analysis, multi-chapter numerical drills, and timing optimization.',
+    features: ['10+ Years Board Exam solution series', 'Formula memory maps & flashcards', 'Strict simulated exam hall conditioning'],
+    status: 'Admissions Open'
   },
   {
     id: 'b-c10-com',
@@ -399,7 +425,12 @@ export const initialAdminBatches: BatchInfo[] = [
     schedule: 'Sun, Tue, Thu (2:00 PM - 4:30 PM)',
     room: 'Room 103',
     enrolledCount: 17,
-    capacity: 20
+    capacity: 20,
+    photo: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80',
+    monthlyFee: 2300,
+    shortDescription: 'Fast-paced accounting worksheet drills, financial statements review, and creative questions.',
+    features: ['Financial statement speed drills', 'Chapter-wise MCQ shortcuts', 'Individual error diagnosis sheets'],
+    status: 'Admissions Open'
   },
   {
     id: 'b-ssc-sp',
@@ -410,7 +441,12 @@ export const initialAdminBatches: BatchInfo[] = [
     schedule: 'Sat, Sun, Tue, Thu (3:30 PM - 6:30 PM)',
     room: 'Central Exam Hall',
     enrolledCount: 18,
-    capacity: 18
+    capacity: 18,
+    photo: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=800&q=80',
+    monthlyFee: 3000,
+    shortDescription: 'Intensive full-syllabus mock exams, OMR machine grading, and line-by-line examiner grading remarks.',
+    features: ['30+ Full Model Test papers', 'Instant OMR analytics & rankings', 'Exclusive Golden A+ suggestion guide'],
+    status: 'Full'
   },
   {
     id: 'b-hsc-sci',
@@ -421,7 +457,12 @@ export const initialAdminBatches: BatchInfo[] = [
     schedule: 'Sat, Mon, Wed (4:00 PM - 6:30 PM)',
     room: 'Room 201 (Science Block)',
     enrolledCount: 19,
-    capacity: 22
+    capacity: 22,
+    photo: 'https://images.unsplash.com/photo-1581093458791-9f3c3250a8b0?auto=format&fit=crop&w=800&q=80',
+    monthlyFee: 3200,
+    shortDescription: 'College board syllabus mastery coupled with engineering and medical admission entrance alignment.',
+    features: ['Advanced calculus & electromagnetism', 'Organic reaction roadmaps', 'Dual Board + Admission concept coverage'],
+    status: 'Admissions Open'
   },
   {
     id: 'b-hsc-com',
@@ -432,7 +473,12 @@ export const initialAdminBatches: BatchInfo[] = [
     schedule: 'Sun, Tue, Thu (4:00 PM - 6:30 PM)',
     room: 'Room 202',
     enrolledCount: 15,
-    capacity: 20
+    capacity: 20,
+    photo: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
+    monthlyFee: 2800,
+    shortDescription: 'Higher secondary Accounting principles, Business Management, and University IBA/BBA foundation.',
+    features: ['Cost accounting and auditing fundamentals', 'IBA & DU Commerce admission preview', 'Personalized academic counseling'],
+    status: 'Admissions Open'
   }
 ];
 
@@ -763,7 +809,14 @@ export const createClassRoutineSvg = (className: string, title?: string): string
     <text x="40" y="605" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" fill="#64748b">Helpline: +880 1683-334080 • Web Portal: psyche.edu.bd • GEC Circle, Chattogram</text>
     <text x="860" y="605" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" fill="#881337" text-anchor="end">Official Seal: Approved by Academic Council</text>
   </svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  try {
+    if (typeof window !== 'undefined' && typeof window.btoa === 'function') {
+      return 'data:image/svg+xml;base64,' + window.btoa(unescape(encodeURIComponent(svg)));
+    }
+  } catch {
+    // fallback to encoded URI
+  }
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 };
 
 export const initialAdminClassRoutines: AdminClassRoutine[] = [

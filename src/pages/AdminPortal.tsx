@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   initialAdminStudents,
@@ -115,7 +115,24 @@ export const AdminPortal: React.FC = () => {
 
   const [batches, setBatches] = useState<BatchInfo[]>(() => {
     const saved = localStorage.getItem('pschye_admin_batches');
-    return saved ? JSON.parse(saved) : initialAdminBatches;
+    if (!saved) return initialAdminBatches;
+    try {
+      const parsed: BatchInfo[] = JSON.parse(saved);
+      return parsed.map(b => {
+        const match = initialAdminBatches.find(init => init.id === b.id || init.code === b.code);
+        return {
+          ...match,
+          ...b,
+          photo: b.photo || match?.photo || 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80',
+          monthlyFee: b.monthlyFee || match?.monthlyFee || 2500,
+          shortDescription: b.shortDescription || match?.shortDescription || '',
+          features: b.features || match?.features,
+          status: b.status || match?.status || 'Admissions Open',
+        };
+      });
+    } catch {
+      return initialAdminBatches;
+    }
   });
 
   const [faculty, setFaculty] = useState<AdminFaculty[]>(() => {
@@ -161,14 +178,26 @@ export const AdminPortal: React.FC = () => {
   const [classRoutines, setClassRoutines] = useState<AdminClassRoutine[]>(() => {
     try {
       const saved = localStorage.getItem('pschye_class_routines');
-      return saved ? JSON.parse(saved) : initialAdminClassRoutines;
+      if (saved) {
+        const parsed: AdminClassRoutine[] = JSON.parse(saved);
+        return parsed.map(r => {
+          if (r.fileUrl && (r.fileUrl.startsWith('data:image/svg+xml;utf8,') || r.fileUrl.startsWith('data:image/svg+xml;charset=utf-8,') || (r.fileUrl.startsWith('data:image/svg+xml') && !r.fileUrl.includes(';base64,')))) {
+            return {
+              ...r,
+              fileUrl: createClassRoutineSvg(r.targetClass, r.title)
+            };
+          }
+          return r;
+        });
+      }
+      return initialAdminClassRoutines;
     } catch {
       return initialAdminClassRoutines;
     }
   });
 
   // Navigation tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'results' | 'fees' | 'admissions' | 'batches' | 'faculty' | 'notices' | 'routine'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'results' | 'fees' | 'admissions' | 'batches' | 'faculty' | 'notices' | 'routine' | 'publish-result'>('overview');
 
   // Flash toast message
   const [toastMessage, setToastMessage] = useState('');
@@ -201,6 +230,7 @@ export const AdminPortal: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem('pschye_admin_batches', JSON.stringify(batches));
+    window.dispatchEvent(new Event('batchesUpdate'));
   }, [batches]);
 
   useEffect(() => {
@@ -297,51 +327,200 @@ export const AdminPortal: React.FC = () => {
     showToast(`Enrolled ${student.name} with Student ID: ${studentId}`);
   };
 
-  // Add Exam Result Modal
+  // ================= EXCEL-STYLE BULK SCORE ENTRY (IMAGE 2) =================
   const [showAddResultModal, setShowAddResultModal] = useState(false);
-  const [newResult, setNewResult] = useState({
-    studentId: students[0]?.studentId || '',
-    examName: 'Mid-Term Evaluation',
-    subject: 'Physics',
-    marksObtained: 85,
-    totalMarks: 100,
-    remarks: 'Consistent analytical technique'
-  });
+  const [bulkClass, setBulkClass] = useState<string>('All');
+  const [bulkExam, setBulkExam] = useState<string>('Final Exam 2026');
+  const [bulkSubject, setBulkSubject] = useState<string>('Physics');
+  const [bulkTotalMarks, setBulkTotalMarks] = useState<number>(100);
+  const [bulkScores, setBulkScores] = useState<{ [studentId: string]: string | number }>({});
+  const [bulkRemarks, setBulkRemarks] = useState<{ [studentId: string]: string }>({});
 
-  const handleCreateResult = (e: React.FormEvent) => {
-    e.preventDefault();
-    const student = students.find(s => s.studentId === newResult.studentId);
-    const marks = Number(newResult.marksObtained);
-    const total = Number(newResult.totalMarks) || 100;
-    const percentage = (marks / total) * 100;
-    
-    let grade = 'F';
-    let gpa = 0.0;
-    if (percentage >= 80) { grade = 'A+'; gpa = 5.0; }
-    else if (percentage >= 70) { grade = 'A'; gpa = 4.0; }
-    else if (percentage >= 60) { grade = 'A-'; gpa = 3.5; }
-    else if (percentage >= 50) { grade = 'B'; gpa = 3.0; }
-    else if (percentage >= 40) { grade = 'C'; gpa = 2.0; }
-    else if (percentage >= 33) { grade = 'D'; gpa = 1.0; }
+  // Sync existing scores whenever modal opens or exam/subject changes
+  useEffect(() => {
+    if (!showAddResultModal) return;
+    const scoresMap: { [studentId: string]: string | number } = {};
+    const remarksMap: { [studentId: string]: string } = {};
 
-    const createdResult: AdminExamResult = {
-      id: `res-${Date.now()}`,
-      studentId: newResult.studentId,
-      studentName: student?.name || 'Student',
-      batch: student?.batch || 'General Batch',
-      examName: newResult.examName,
-      subject: newResult.subject,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      marksObtained: marks,
-      totalMarks: total,
-      gpa,
-      grade,
-      remarks: newResult.remarks
-    };
+    results.forEach(r => {
+      if (r.examName === bulkExam && r.subject === bulkSubject) {
+        scoresMap[r.studentId] = r.marksObtained;
+        if (r.remarks) remarksMap[r.studentId] = r.remarks;
+      }
+    });
 
-    setResults(prev => [createdResult, ...prev]);
+    setBulkScores(scoresMap);
+    setBulkRemarks(remarksMap);
+  }, [showAddResultModal, bulkExam, bulkSubject, results]);
+
+  // Extract all distinct class options
+  const classOptions = useMemo(() => {
+    const list = new Set<string>();
+    list.add('All');
+    list.add('Class 10A');
+    list.add('Class 10 (SSC)');
+    list.add('Class 9 (Science)');
+    list.add('Class 9 (Commerce)');
+    list.add('Class 10 (Science)');
+    list.add('Class 10 (Commerce)');
+    list.add('SSC Special Batch');
+    list.add('HSC (Science)');
+    list.add('HSC (Commerce)');
+    list.add('Class 8');
+
+    students.forEach(s => {
+      if (s.currentClass) list.add(s.currentClass);
+    });
+    batches.forEach(b => {
+      if (b.targetClass) list.add(b.targetClass);
+    });
+
+    return Array.from(list);
+  }, [students, batches]);
+
+  // Filter students based on selected class
+  const filteredBulkStudents = useMemo(() => {
+    if (bulkClass === 'All' || bulkClass === 'All Classes') {
+      return students;
+    }
+    const target = bulkClass.toLowerCase();
+    const matched = students.filter(s => {
+      const sClass = (s.currentClass || '').toLowerCase();
+      const sBatch = (s.batch || '').toLowerCase();
+      if (sClass === target || sBatch === target) return true;
+      if (target.includes('10a') && (sClass.includes('10') || sClass.includes('ssc') || sBatch.includes('10') || sBatch.includes('ssc'))) return true;
+      if (target.includes('10') && (sClass.includes('10') || sClass.includes('ssc') || sBatch.includes('10') || sBatch.includes('ssc'))) return true;
+      if (target.includes('9') && (sClass.includes('9') || sBatch.includes('9'))) return true;
+      if (target.includes('8') && (sClass.includes('8') || sBatch.includes('8'))) return true;
+      if (target.includes('hsc') && (sClass.includes('hsc') || sBatch.includes('hsc'))) return true;
+      return sClass.includes(target) || sBatch.includes(target);
+    });
+
+    return matched.length > 0 ? matched : students;
+  }, [students, bulkClass]);
+
+  // Handle score change with total marks boundary validation
+  const handleScoreChange = (studentId: string, valStr: string) => {
+    if (valStr === '') {
+      setBulkScores(prev => {
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
+      return;
+    }
+    const val = Number(valStr);
+    if (isNaN(val) || val < 0) return;
+    if (val > bulkTotalMarks) {
+      setBulkScores(prev => ({ ...prev, [studentId]: bulkTotalMarks }));
+      showToast(isBangla ? `প্রাপ্ত নম্বর মোট নম্বর (${bulkTotalMarks})-এর বেশি হতে পারবে না` : `Score cannot exceed Total Marks (${bulkTotalMarks})`);
+      return;
+    }
+    setBulkScores(prev => ({ ...prev, [studentId]: val }));
+  };
+
+  // Keyboard navigation: Enter / ArrowDown jumps to next student; ArrowUp jumps to previous
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextInput = document.getElementById(`bulk-score-input-${index + 1}`) as HTMLInputElement | null;
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevInput = document.getElementById(`bulk-score-input-${index - 1}`) as HTMLInputElement | null;
+      if (prevInput) {
+        prevInput.focus();
+        prevInput.select();
+      }
+    }
+  };
+
+  // Bulk Save / Publish handler
+  const handleBulkSaveScores = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    const entries = Object.entries(bulkScores).filter(([_, val]) => val !== '' && val !== undefined);
+    if (entries.length === 0) {
+      alert(isBangla ? 'অনুগ্রহ করে অন্তত একজন শিক্ষার্থীর নম্বর প্রদান করুন।' : 'Please enter scores for at least one student.');
+      return;
+    }
+
+    // Validate max marks
+    for (const [sId, val] of entries) {
+      if (Number(val) > bulkTotalMarks) {
+        alert(isBangla ? `শিক্ষার্থী ID ${sId}-এর নম্বর মোট নম্বর (${bulkTotalMarks})-এর চেয়ে বেশি হতে পারবে না।` : `Score for Student ID ${sId} cannot exceed Total Marks (${bulkTotalMarks}).`);
+        return;
+      }
+    }
+
+    const updatedResults = [...results];
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    entries.forEach(([studentId, marksVal]) => {
+      const marks = Number(marksVal);
+      const student = students.find(s => s.studentId === studentId);
+      const percentage = (marks / bulkTotalMarks) * 100;
+      
+      let grade = 'F';
+      let gpa = 0.0;
+      if (percentage >= 80) { grade = 'A+'; gpa = 5.0; }
+      else if (percentage >= 70) { grade = 'A'; gpa = 4.0; }
+      else if (percentage >= 60) { grade = 'A-'; gpa = 3.5; }
+      else if (percentage >= 50) { grade = 'B'; gpa = 3.0; }
+      else if (percentage >= 40) { grade = 'C'; gpa = 2.0; }
+      else if (percentage >= 33) { grade = 'D'; gpa = 1.0; }
+
+      const existingIdx = updatedResults.findIndex(
+        r => r.studentId === studentId && r.examName === bulkExam && r.subject === bulkSubject
+      );
+
+      const remarks = bulkRemarks[studentId] || (percentage >= 80 ? 'Outstanding analytical performance' : percentage >= 60 ? 'Satisfactory, keep improving' : 'Needs additional care and practice');
+
+      if (existingIdx >= 0) {
+        updatedResults[existingIdx] = {
+          ...updatedResults[existingIdx],
+          marksObtained: marks,
+          totalMarks: bulkTotalMarks,
+          gpa,
+          grade,
+          remarks,
+          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        };
+        updatedCount++;
+      } else {
+        const newRecord: AdminExamResult = {
+          id: `res-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          studentId,
+          studentName: student?.name || 'Student',
+          batch: student?.batch || student?.currentClass || 'General Batch',
+          examName: bulkExam,
+          subject: bulkSubject,
+          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          marksObtained: marks,
+          totalMarks: bulkTotalMarks,
+          gpa,
+          grade,
+          remarks
+        };
+        updatedResults.unshift(newRecord);
+        createdCount++;
+      }
+    });
+
+    setResults(updatedResults);
+    localStorage.setItem('pschye_admin_results', JSON.stringify(updatedResults));
+    window.dispatchEvent(new Event('adminResultsUpdate'));
+    window.dispatchEvent(new Event('resultsUpdate'));
+
     setShowAddResultModal(false);
-    showToast(`Published exam score for ${student?.name || newResult.studentId}`);
+    showToast(isBangla
+      ? `সফলভাবে ${createdCount + updatedCount} জন শিক্ষার্থীর ${bulkSubject} (${bulkExam}) নম্বর প্রকাশ করা হয়েছে!`
+      : `Successfully published scores for ${createdCount + updatedCount} students in ${bulkSubject} (${bulkExam})!`
+    );
   };
 
   // ================= PUBLIC RESULTS & SUCCESS SHOWCASE (FOR /results PAGE) =================
@@ -623,6 +802,124 @@ export const AdminPortal: React.FC = () => {
     if (confirm(isBangla ? 'এই নোটিশটি মুছে ফেলতে চান?' : 'Delete this notice?')) {
       setNotices(prev => prev.filter(n => n.id !== id));
       showToast(isBangla ? 'নোটিশ মুছে ফেলা হয়েছে।' : 'Notice deleted.');
+    }
+  };
+
+  // ─── BATCH HANDLERS ─────────────────────────────────────────────────────────
+  const [showAddBatchModal, setShowAddBatchModal] = useState(false);
+  const [editingBatch, setEditingBatch] = useState<BatchInfo | null>(null);
+  const [newBatch, setNewBatch] = useState({
+    name: '',
+    code: '',
+    targetClass: 'Class 9 (Science)',
+    schedule: 'Sat, Mon, Wed (8:00 AM - 10:30 AM)',
+    photo: '',
+    monthlyFee: 2500,
+    shortDescription: '',
+    features: '',
+    status: 'Admissions Open' as 'Admissions Open' | 'Ongoing' | 'Full' | 'Upcoming',
+  });
+  const [batchPhotoPreview, setBatchPhotoPreview] = useState<string>('');
+
+  const handleBatchPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 3 * 1024 * 1024) {
+        showToast(isBangla ? 'ছবির আকার সর্বোচ্চ ৩ মেগাবাইট হতে হবে' : 'Image size must be under 3MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setBatchPhotoPreview(result);
+        setNewBatch(prev => ({ ...prev, photo: result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleOpenAddBatch = () => {
+    setEditingBatch(null);
+    setNewBatch({
+      name: '',
+      code: `PAC-B${batches.length + 1}`,
+      targetClass: 'Class 9 (Science)',
+      schedule: 'Sat, Mon, Wed (8:00 AM - 10:30 AM)',
+      photo: '',
+      monthlyFee: 2500,
+      shortDescription: '',
+      features: '',
+      status: 'Admissions Open',
+    });
+    setBatchPhotoPreview('');
+    setShowAddBatchModal(true);
+  };
+
+  const handleOpenEditBatch = (b: BatchInfo) => {
+    setEditingBatch(b);
+    setNewBatch({
+      name: b.name,
+      code: b.code,
+      targetClass: b.targetClass,
+      schedule: b.schedule || '',
+      photo: b.photo || '',
+      monthlyFee: b.monthlyFee || 2500,
+      shortDescription: b.shortDescription || '',
+      features: b.features ? b.features.join(', ') : '',
+      status: b.status || 'Admissions Open',
+    });
+    setBatchPhotoPreview(b.photo || '');
+    setShowAddBatchModal(true);
+  };
+
+  const handleSaveBatch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBatch.name.trim()) return;
+
+    const parsedFeatures = newBatch.features
+      ? newBatch.features.split(',').map(f => f.trim()).filter(Boolean)
+      : [];
+
+    const finalPhoto = (newBatch.photo || batchPhotoPreview).trim() ||
+      'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80';
+
+    if (editingBatch) {
+      setBatches(prev => prev.map(b => b.id === editingBatch.id ? {
+        ...b,
+        name: newBatch.name.trim(),
+        code: newBatch.code.trim() || b.code,
+        targetClass: newBatch.targetClass,
+        schedule: newBatch.schedule.trim() || b.schedule,
+        photo: finalPhoto,
+        monthlyFee: Number(newBatch.monthlyFee) || 2500,
+        shortDescription: newBatch.shortDescription.trim(),
+        features: parsedFeatures.length > 0 ? parsedFeatures : undefined,
+        status: newBatch.status,
+      } : b));
+      showToast(isBangla ? 'ব্যাচের তথ্য সফলভাবে আপডেট হয়েছে!' : 'Batch updated successfully!');
+    } else {
+      const createdBatch: BatchInfo = {
+        id: `batch-${Date.now()}`,
+        name: newBatch.name.trim(),
+        code: newBatch.code.trim() || `PAC-B${Date.now().toString().slice(-4)}`,
+        targetClass: newBatch.targetClass,
+        schedule: newBatch.schedule.trim() || 'Schedule TBA',
+        photo: finalPhoto,
+        monthlyFee: Number(newBatch.monthlyFee) || 2500,
+        shortDescription: newBatch.shortDescription.trim(),
+        features: parsedFeatures.length > 0 ? parsedFeatures : undefined,
+        status: newBatch.status,
+      };
+      setBatches(prev => [createdBatch, ...prev]);
+      showToast(isBangla ? 'নতুন ব্যাচ সফলভাবে যোগ করা হয়েছে!' : 'New batch added successfully!');
+    }
+    setShowAddBatchModal(false);
+  };
+
+  const handleDeleteBatch = (id: string, name: string) => {
+    if (confirm(isBangla ? `আপনি কি "${name}" ব্যাচটি মুছে ফেলতে চান?` : `Delete batch "${name}"?`)) {
+      setBatches(prev => prev.filter(b => b.id !== id));
+      showToast(isBangla ? 'ব্যাচ মুছে ফেলা হয়েছে।' : 'Batch removed successfully.');
     }
   };
 
@@ -922,7 +1219,7 @@ export const AdminPortal: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         
         {/* Navigation Tabs Bar */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-2 shadow-xs flex flex-wrap items-center gap-1">
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-2 shadow-xs flex flex-wrap items-center gap-1.5">
           {[
             { id: 'overview', name: isBangla ? 'ড্যাশবোর্ড' : 'Dashboard', icon: LayoutDashboard },
             { id: 'students', name: isBangla ? 'শিক্ষার্থী' : 'Students', icon: Users, count: totalStudents },
@@ -933,6 +1230,7 @@ export const AdminPortal: React.FC = () => {
             { id: 'faculty', name: isBangla ? 'শিক্ষকমণ্ডলী' : 'Faculty', icon: BookUser, count: faculty.length },
             { id: 'notices', name: isBangla ? 'নোটিশ বোর্ড' : 'Notice Board', icon: Bell, count: notices.length },
             { id: 'routine', name: isBangla ? 'ক্লাস রুটিন' : 'Routine', icon: CalendarDays },
+            { id: 'publish-result', name: isBangla ? 'ফলাফল প্রকাশ' : 'Publish Result', icon: Plus },
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -940,7 +1238,7 @@ export const AdminPortal: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   isActive
                     ? 'bg-maroon-800 text-white shadow-xs'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -1181,13 +1479,15 @@ export const AdminPortal: React.FC = () => {
 
                 <div className="space-y-3.5">
                   {batches.map(b => {
-                    const pct = Math.round((b.enrolledCount / b.capacity) * 100);
+                    const enrolled = b.enrolledCount || 0;
+                    const cap = b.capacity || 1;
+                    const pct = Math.round((enrolled / cap) * 100);
                     return (
                       <div key={b.id} className="space-y-1.5">
                         <div className="flex items-center justify-between text-xs font-bold">
                           <span className="text-slate-800 truncate">{b.name}</span>
                           <span className="text-slate-500">
-                            {b.enrolledCount}/{b.capacity} {isBangla ? 'আসন' : 'seats'} ({pct}%)
+                            {enrolled}/{b.capacity || 0} {isBangla ? 'আসন' : 'seats'} ({pct}%)
                           </span>
                         </div>
                         <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
@@ -1799,35 +2099,134 @@ export const AdminPortal: React.FC = () => {
         {/* TAB 6: BATCHES & SCHEDULE */}
         {activeTab === 'batches' && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6 animate-in fade-in duration-200">
-            <div className="border-b border-slate-100 pb-4">
-              <h2 className="text-xl font-bold text-slate-900">
-                {isBangla ? 'কোচিং ব্যাচ ও ক্লাসরুম' : 'Coaching Batches & Classrooms'}
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {isBangla ? 'ক্লাসের সময়সূচী, শিক্ষক এবং আসন প্রাপ্যতা' : 'Class timings, instructors, and seat availability'}
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">
+                  {isBangla ? 'কোচিং ব্যাচ ও ক্লাসরুম' : 'Coaching Batches & Classrooms'}
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isBangla ? 'ক্লাসের সময়সূচী, শিক্ষক, মাসিক ফি এবং আসন প্রাপ্যতা পরিচালনা' : 'Manage class timings, instructors, fees, and seat availability'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenAddBatch}
+                className="px-4 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{isBangla ? 'নতুন ব্যাচ যোগ করুন' : 'Add New Batch'}</span>
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {batches.map(b => (
-                <div key={b.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 text-maroon-800 border border-rose-200">
+                <div key={b.id} className="rounded-2xl border border-slate-200 bg-white hover:border-maroon-300 hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col">
+                  {/* Photo & Status Header */}
+                  <div className="relative h-44 bg-slate-100 overflow-hidden group">
+                    <img
+                      src={b.photo || 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80'}
+                      alt={b.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-black/20" />
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
+                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-white/95 text-maroon-900 shadow-xs border border-white/40">
                         {b.code}
                       </span>
-                      <h3 className="text-base font-bold text-slate-900 mt-1">{b.name}</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        b.status === 'Full' 
+                          ? 'bg-rose-600 text-white' 
+                          : b.status === 'Upcoming'
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-emerald-600 text-white'
+                      }`}>
+                        {b.status || 'Admissions Open'}
+                      </span>
                     </div>
-                    <span className="text-xs font-bold text-slate-500">
-                      {b.enrolledCount} / {b.capacity} {isBangla ? 'জন শিক্ষার্থী' : 'Students'}
-                    </span>
+                    {b.monthlyFee && (
+                      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-maroon-900/90 backdrop-blur-xs text-white text-xs font-black shadow-xs">
+                        ৳{b.monthlyFee.toLocaleString()}/{isBangla ? 'মাস' : 'mo'}
+                      </div>
+                    )}
+                    <div className="absolute bottom-3 left-3 right-3 text-white">
+                      <span className="text-[11px] font-semibold text-rose-200 block uppercase tracking-wider">{b.targetClass}</span>
+                      <h3 className="text-sm font-black text-white line-clamp-1 drop-shadow-xs">{b.name}</h3>
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5 text-xs text-slate-600 bg-white p-3.5 rounded-xl border border-slate-200/80">
-                    <div><strong>{isBangla ? 'টার্গেট শ্রেণি:' : 'Target:'}</strong> {b.targetClass}</div>
-                    <div><strong>{isBangla ? 'শিক্ষক:' : 'Instructor:'}</strong> {b.instructor}</div>
-                    <div><strong>{isBangla ? 'সময়সূচী:' : 'Schedule:'}</strong> {b.schedule}</div>
-                    <div><strong>{isBangla ? 'রুম নং:' : 'Room:'}</strong> {b.room}</div>
+                  {/* Body Content */}
+                  <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                    {b.shortDescription && (
+                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                        {b.shortDescription}
+                      </p>
+                    )}
+
+                    <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      {b.schedule && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3.5 h-3.5 text-maroon-700 shrink-0" />
+                          <span className="truncate"><strong>{isBangla ? 'সময়সূচী:' : 'Schedule:'}</strong> {b.schedule}</span>
+                        </div>
+                      )}
+                      {b.instructor && (
+                        <div className="flex items-center gap-2">
+                          <Users className="w-3.5 h-3.5 text-maroon-700 shrink-0" />
+                          <span className="truncate"><strong>{isBangla ? 'শিক্ষক:' : 'Instructor:'}</strong> {b.instructor}</span>
+                        </div>
+                      )}
+                      {b.room && (
+                        <div className="flex items-center gap-2">
+                          <Building className="w-3.5 h-3.5 text-maroon-700 shrink-0" />
+                          <span className="truncate"><strong>{isBangla ? 'রুম নং:' : 'Room:'}</strong> {b.room}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Capacity Progress Bar (if capacity is defined) */}
+                    {b.capacity && b.capacity > 0 ? (
+                      <div className="space-y-1 pt-1">
+                        <div className="flex justify-between text-[11px] font-bold text-slate-600">
+                          <span>{isBangla ? 'আসন পূরণ:' : 'Seat Occupancy:'}</span>
+                          <span className={(b.enrolledCount || 0) >= b.capacity ? 'text-rose-600' : 'text-slate-800'}>
+                            {b.enrolledCount || 0} / {b.capacity} ({Math.round(((b.enrolledCount || 0) / b.capacity) * 100)}%)
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              (b.enrolledCount || 0) >= b.capacity ? 'bg-rose-500' : 'bg-maroon-800'
+                            }`}
+                            style={{ width: `${Math.min(100, Math.round(((b.enrolledCount || 0) / b.capacity) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Footer Actions */}
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[11px] text-slate-500">
+                        {isBangla ? 'আইডি:' : 'ID:'} {b.id}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditBatch(b)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-700 hover:text-maroon-800 hover:bg-maroon-50 border border-slate-200 transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          <span>{isBangla ? 'এডিট' : 'Edit'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteBatch(b.id, b.name)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title={isBangla ? 'মুছে ফেলুন' : 'Delete Batch'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -2154,9 +2553,9 @@ export const AdminPortal: React.FC = () => {
                         >
                           <div>
                             {/* Card Header & Badges */}
-                            <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-2 bg-gradient-to-r from-slate-50 to-white">
-                              <span className="px-3 py-1 rounded-full text-xs font-black bg-maroon-100 text-maroon-900 border border-maroon-200 flex items-center gap-1.5">
-                                <GraduationCap className="w-3.5 h-3.5 text-maroon-800" />
+                            <div className="p-3 sm:p-3.5 border-b border-slate-100 flex items-center justify-between gap-2 bg-gradient-to-r from-slate-50 to-white">
+                              <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-900 border border-rose-200/80 flex items-center gap-1.5 shadow-2xs">
+                                <GraduationCap className="w-3.5 h-3.5 text-rose-700" />
                                 {routine.targetClass}
                               </span>
 
@@ -2165,7 +2564,7 @@ export const AdminPortal: React.FC = () => {
                                   ? 'bg-rose-50 text-rose-700 border-rose-200' 
                                   : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               }`}>
-                                {routine.fileType === 'pdf' ? '📄 PDF Document' : '🖼️ Image'}
+                                {routine.fileType === 'pdf' ? '📄 PDF' : '🖼️ IMAGE'}
                               </span>
                             </div>
 
@@ -2179,6 +2578,14 @@ export const AdminPortal: React.FC = () => {
                                   src={routine.fileUrl}
                                   alt={routine.title}
                                   className="w-full h-full object-cover object-top transition-transform duration-300 group-hover/preview:scale-105"
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    try {
+                                      target.src = createClassRoutineSvg(routine.targetClass, routine.title);
+                                    } catch {
+                                      // ignore
+                                    }
+                                  }}
                                 />
                               ) : (
                                 <div className="p-6 text-center space-y-2">
@@ -2200,27 +2607,25 @@ export const AdminPortal: React.FC = () => {
                             </div>
 
                             {/* Card Content Info */}
-                            <div className="p-4 space-y-2">
-                              <h3 className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
+                            <div className="p-4 space-y-1.5">
+                              <h3 className="text-sm sm:text-base font-black text-slate-900 leading-snug line-clamp-2">
                                 {routine.title}
                               </h3>
 
-                              <div className="space-y-1 text-xs text-slate-500">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span>{isBangla ? 'আপলোড:' : 'Uploaded:'} <strong className="text-slate-700">{routine.uploadedAt}</strong></span>
-                                  {routine.fileSize && <span>{routine.fileSize}</span>}
-                                </div>
-                                {routine.effectiveDate && (
-                                  <div className="text-[11px] text-maroon-800 font-semibold">
-                                    {isBangla ? `কার্যকর: ${routine.effectiveDate}` : `Effective: ${routine.effectiveDate}`}
-                                  </div>
-                                )}
-                                {routine.notes && (
-                                  <p className="text-[11px] text-slate-600 line-clamp-2 italic pt-1 border-t border-slate-100">
-                                    "{routine.notes}"
-                                  </p>
-                                )}
+                              <div className="flex items-center justify-between text-xs text-slate-500 pt-0.5">
+                                <span>{isBangla ? 'আপলোড:' : 'Uploaded:'} <strong className="text-slate-700 font-semibold">{routine.uploadedAt}</strong></span>
+                                <span className="text-[11px] font-semibold text-slate-500">{routine.fileSize || '450 KB'}</span>
                               </div>
+
+                              <div className="text-xs text-maroon-800 font-bold">
+                                {isBangla ? `কার্যকর: ${routine.effectiveDate || 'তাৎক্ষণিক'}` : `Effective: ${routine.effectiveDate || 'Immediate'}`}
+                              </div>
+
+                              {routine.notes && (
+                                <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100 italic line-clamp-2 mt-1">
+                                  "{routine.notes}"
+                                </p>
+                              )}
                             </div>
                           </div>
 
@@ -2229,7 +2634,7 @@ export const AdminPortal: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setPreviewRoutineModal(routine)}
-                              className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                              className="px-4 py-1.5 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                             >
                               <Eye className="w-3.5 h-3.5 text-maroon-800" />
                               <span>{isBangla ? 'দেখুন' : 'View'}</span>
@@ -2239,7 +2644,7 @@ export const AdminPortal: React.FC = () => {
                               <a
                                 href={routine.fileUrl}
                                 download={routine.fileName || `${routine.targetClass}-routine.${routine.fileType === 'pdf' ? 'pdf' : 'png'}`}
-                                className="p-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-maroon-800 transition-colors cursor-pointer"
+                                className="p-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-maroon-800 transition-colors cursor-pointer"
                                 title={isBangla ? 'ডাউনলোড করুন' : 'Download file'}
                               >
                                 <Download className="w-4 h-4" />
@@ -2247,7 +2652,7 @@ export const AdminPortal: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteClassRoutine(routine.id, routine.title)}
-                                className="p-1.5 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                className="p-2 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                                 title={isBangla ? 'রুটিন মুছুন' : 'Delete routine'}
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -2318,6 +2723,234 @@ export const AdminPortal: React.FC = () => {
                 </div>
               )}
 
+            </div>
+          </div>
+        )}
+
+        {/* TAB 10: PUBLISH RESULT (EXCEL-STYLE BULK SCORE ENTRY) */}
+        {activeTab === 'publish-result' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Top Overview & Filters Card */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-maroon-900 text-xs font-bold uppercase tracking-wider mb-2">
+                    <Award className="w-3.5 h-3.5 text-rose-600" />
+                    <span>{isBangla ? 'এক্সেল-স্টাইল বাল্ক ফলাফল প্রকাশ' : 'Excel-Style Bulk Score Publishing'}</span>
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                    {isBangla ? 'পরীক্ষার ফলাফল এন্ট্রি ও প্রকাশ' : 'Bulk Exam Score Entry & Publication'}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                    {isBangla 
+                      ? 'শ্রেণি, পরীক্ষা ও বিষয় নির্বাচন করে শিক্ষার্থীদের নম্বর সরাসরি স্প্রেডশিটের মতো দ্রুত এন্ট্রি করুন (Enter অথবা ArrowDown চেপে পরের ঘরে যান)।'
+                      : 'Select Class, Exam, and Subject to rapidly enter scores like an Excel spreadsheet (press Enter or ArrowDown to move to next student).'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddResultModal(true)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>{isBangla ? 'মোডালে খুলুন' : 'Open in Modal'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkSaveScores()}
+                    className="px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold text-xs shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-2 shrink-0"
+                  >
+                    <Check className="w-4 h-4 text-emerald-300" />
+                    <span>{isBangla ? 'Save / Publish All Scores' : 'Save / Publish All Scores'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters row (Image 2) */}
+              <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 flex flex-wrap items-end justify-between gap-4">
+                <div className="flex flex-wrap items-end gap-3 flex-1">
+                  {/* Select Class */}
+                  <div className="space-y-1 min-w-[140px]">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600">
+                      {isBangla ? 'শ্রেণি নির্বাচন' : 'Select Class'}
+                    </label>
+                    <select
+                      value={bulkClass}
+                      onChange={e => setBulkClass(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-600 cursor-pointer shadow-2xs"
+                    >
+                      {classOptions.map(cls => (
+                        <option key={cls} value={cls}>
+                          {cls === 'All' ? (isBangla ? 'সকল শ্রেণি (All)' : 'All Classes') : cls}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Select Exam */}
+                  <div className="space-y-1 min-w-[160px]">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600">
+                      {isBangla ? 'পরীক্ষা নির্বাচন' : 'Select Exam'}
+                    </label>
+                    <select
+                      value={bulkExam}
+                      onChange={e => setBulkExam(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-600 cursor-pointer shadow-2xs"
+                    >
+                      <option value="Final Exam 2026">Final Exam 2026</option>
+                      <option value="Mid-Term Evaluation">Mid-Term Evaluation</option>
+                      <option value="Model Test 1">Model Test 1</option>
+                      <option value="Model Test 2">Model Test 2</option>
+                      <option value="Pre-Test Assessment">Pre-Test Assessment</option>
+                      <option value="Weekly CQ Practice">Weekly CQ Practice</option>
+                      <option value="Monthly Assessment">Monthly Assessment</option>
+                    </select>
+                  </div>
+
+                  {/* Select Subject */}
+                  <div className="space-y-1 min-w-[140px]">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600">
+                      {isBangla ? 'বিষয় নির্বাচন' : 'Select Subject'}
+                    </label>
+                    <select
+                      value={bulkSubject}
+                      onChange={e => setBulkSubject(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-600 cursor-pointer shadow-2xs"
+                    >
+                      <option value="Physics">Physics</option>
+                      <option value="Chemistry">Chemistry</option>
+                      <option value="Mathematics">Mathematics</option>
+                      <option value="Higher Mathematics">Higher Mathematics</option>
+                      <option value="Biology">Biology</option>
+                      <option value="English">English</option>
+                      <option value="Bangla">Bangla</option>
+                      <option value="ICT">ICT</option>
+                      <option value="Accounting">Accounting</option>
+                      <option value="Finance">Finance</option>
+                    </select>
+                  </div>
+
+                  {/* Set Total Marks (Admin) */}
+                  <div className="space-y-1 w-28">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600">
+                      {isBangla ? 'মোট নম্বর' : 'Set Total Marks (Admin)'}
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={bulkTotalMarks}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        if (val > 0) setBulkTotalMarks(val);
+                      }}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center text-slate-800 focus:outline-none focus:border-maroon-600 shadow-2xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleBulkSaveScores()}
+                    className="px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold text-xs shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-2 shrink-0"
+                  >
+                    <Check className="w-4 h-4 text-emerald-300" />
+                    <span>{isBangla ? 'Save / Publish All Scores' : 'Save / Publish All Scores'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Table (Image 2) */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-700 font-black uppercase tracking-wider text-[11px] border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3.5 w-16 text-center">{isBangla ? 'ক্রম' : 'SL'}</th>
+                      <th className="px-4 py-3.5 w-48">{isBangla ? 'শিক্ষার্থী আইডি' : 'Student ID'}</th>
+                      <th className="px-4 py-3.5">{isBangla ? 'শিক্ষার্থীর নাম' : 'Student Name'}</th>
+                      <th className="px-4 py-3.5 w-48 text-right">
+                        {isBangla ? 'প্রাপ্ত নম্বর' : 'Marks Obtained'} <span className="text-rose-600">*</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredBulkStudents.map((student, idx) => {
+                      const scoreVal = bulkScores[student.studentId] !== undefined ? bulkScores[student.studentId] : '';
+                      const isExceeded = Number(scoreVal) > bulkTotalMarks;
+                      return (
+                        <tr 
+                          key={student.id} 
+                          className={`hover:bg-slate-50/80 transition-colors ${scoreVal !== '' ? 'bg-rose-50/20' : ''}`}
+                        >
+                          <td className="px-4 py-3.5 text-center text-slate-500 font-bold">{idx + 1}</td>
+                          <td className="px-4 py-3.5 font-mono font-bold text-slate-800">{student.studentId}</td>
+                          <td className="px-4 py-3.5">
+                            <span className="font-bold text-slate-900 text-sm">{student.name}</span>
+                            <span className="text-xs text-slate-400 ml-2">({student.currentClass || student.batch})</span>
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <input
+                              id={`page-bulk-score-input-${idx}`}
+                              type="number"
+                              min={0}
+                              max={bulkTotalMarks}
+                              placeholder="Enter Score"
+                              value={scoreVal}
+                              onChange={e => handleScoreChange(student.studentId, e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                  e.preventDefault();
+                                  const nextInput = document.getElementById(`page-bulk-score-input-${idx + 1}`) as HTMLInputElement | null;
+                                  if (nextInput) { nextInput.focus(); nextInput.select(); }
+                                } else if (e.key === 'ArrowUp') {
+                                  e.preventDefault();
+                                  const prevInput = document.getElementById(`page-bulk-score-input-${idx - 1}`) as HTMLInputElement | null;
+                                  if (prevInput) { prevInput.focus(); prevInput.select(); }
+                                }
+                              }}
+                              className={`w-full max-w-[160px] ml-auto px-3.5 py-2 text-right rounded-xl border font-bold text-xs transition-all focus:outline-none ${
+                                isExceeded
+                                  ? 'border-rose-500 bg-rose-50 text-rose-700 focus:ring-2 focus:ring-rose-400'
+                                  : scoreVal !== ''
+                                  ? 'border-maroon-300 bg-white text-maroon-900 focus:border-maroon-600 focus:ring-1 focus:ring-maroon-600'
+                                  : 'border-slate-200 bg-slate-50/60 text-slate-700 focus:bg-white focus:border-maroon-600'
+                              }`}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {/* Footer summary */}
+                <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-3">
+                  <div className="flex items-center gap-3">
+                    <span>
+                      {isBangla ? 'মোট শিক্ষার্থী:' : 'Total Students:'}{' '}
+                      <strong className="text-slate-800">{filteredBulkStudents.length}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                      {isBangla ? 'নম্বর এন্ট্রি করা হয়েছে:' : 'Scores Entered:'}{' '}
+                      <strong className="text-maroon-800">
+                        {Object.values(bulkScores).filter(v => v !== '' && v !== undefined).length}
+                      </strong>
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleBulkSaveScores()}
+                    className="px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>{isBangla ? 'সংরক্ষণ ও প্রকাশ করুন' : 'Save & Publish All Scores'}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -2469,125 +3102,228 @@ export const AdminPortal: React.FC = () => {
         </div>
       )}
 
-      {/* ================= MODAL: ADD EXAM RESULT ================= */}
+      {/* ================= MODAL: EXCEL-STYLE BULK EXAM SCORE ENTRY (IMAGE 2) ================= */}
       {showAddResultModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-lg font-black text-slate-900">
-                {isBangla ? 'পরীক্ষার নম্বর প্রকাশ' : 'Publish Exam Score'}
-              </h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-slate-50 rounded-3xl max-w-5xl w-full p-4 sm:p-6 shadow-2xl border border-slate-200/90 space-y-4 animate-in zoom-in-95 my-auto max-h-[92vh] flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-maroon-800 text-white flex items-center justify-center shadow-xs">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                    <span>{isBangla ? 'পরীক্ষার ফলাফল বাল্ক এন্ট্রি' : 'Publish Exam Scores (Bulk Entry)'}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-maroon-900 border border-rose-200">
+                      Excel Style
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {isBangla 
+                      ? 'একসাথে সম্পূর্ণ ক্লাসের শিক্ষার্থীদের নম্বর এন্ট্রি ও প্রকাশ করুন (Enter/ArrowDown দিয়ে পরের ঘরে যান)' 
+                      : 'Fast batch score publication with spreadsheet keyboard navigation (Press Enter/ArrowDown to jump)'}
+                  </p>
+                </div>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowAddResultModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateResult} className="space-y-4 text-xs font-medium">
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  {isBangla ? 'শিক্ষার্থী নির্বাচন করুন *' : 'Select Student *'}
-                </label>
-                <select
-                  value={newResult.studentId}
-                  onChange={e => setNewResult({ ...newResult, studentId: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
-                >
-                  {students.map(s => (
-                    <option key={s.id} value={s.studentId}>{s.name} ({s.studentId}) - {s.batch}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">
-                    {isBangla ? 'পরীক্ষার নাম *' : 'Exam Title *'}
+            {/* Top Filters & Controls Panel (Image 2) */}
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-end justify-between gap-3">
+              <div className="flex flex-wrap items-end gap-3 flex-1">
+                {/* Select Class */}
+                <div className="space-y-1 min-w-[130px]">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600">
+                    {isBangla ? 'শ্রেণি নির্বাচন' : 'Select Class'}
                   </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder={isBangla ? 'উদাঃ মডেল টেস্ট ১' : 'e.g. Model Test 1'}
-                    value={newResult.examName}
-                    onChange={e => setNewResult({ ...newResult, examName: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
-                  />
+                  <select
+                    value={bulkClass}
+                    onChange={e => setBulkClass(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-600 cursor-pointer shadow-2xs"
+                  >
+                    {classOptions.map(cls => (
+                      <option key={cls} value={cls}>
+                        {cls === 'All' ? (isBangla ? 'সকল শ্রেণি (All)' : 'All Classes') : cls}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">
-                    {isBangla ? 'বিষয় *' : 'Subject *'}
+                {/* Select Exam */}
+                <div className="space-y-1 min-w-[150px]">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600">
+                    {isBangla ? 'পরীক্ষা নির্বাচন' : 'Select Exam'}
                   </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder={isBangla ? 'উদাঃ পদার্থবিজ্ঞান' : 'e.g. Physics, Chemistry'}
-                    value={newResult.subject}
-                    onChange={e => setNewResult({ ...newResult, subject: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
-                  />
+                  <select
+                    value={bulkExam}
+                    onChange={e => setBulkExam(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-600 cursor-pointer shadow-2xs"
+                  >
+                    <option value="Final Exam 2026">Final Exam 2026</option>
+                    <option value="Mid-Term Evaluation">Mid-Term Evaluation</option>
+                    <option value="Model Test 1">Model Test 1</option>
+                    <option value="Model Test 2">Model Test 2</option>
+                    <option value="Pre-Test Assessment">Pre-Test Assessment</option>
+                    <option value="Weekly CQ Practice">Weekly CQ Practice</option>
+                    <option value="Monthly Assessment">Monthly Assessment</option>
+                  </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">
-                    {isBangla ? 'প্রাপ্ত নম্বর *' : 'Marks Obtained *'}
+                {/* Select Subject */}
+                <div className="space-y-1 min-w-[130px]">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600">
+                    {isBangla ? 'বিষয় নির্বাচন' : 'Select Subject'}
+                  </label>
+                  <select
+                    value={bulkSubject}
+                    onChange={e => setBulkSubject(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-600 cursor-pointer shadow-2xs"
+                  >
+                    <option value="Physics">Physics</option>
+                    <option value="Chemistry">Chemistry</option>
+                    <option value="Mathematics">Mathematics</option>
+                    <option value="Higher Mathematics">Higher Mathematics</option>
+                    <option value="Biology">Biology</option>
+                    <option value="English">English</option>
+                    <option value="Bangla">Bangla</option>
+                    <option value="ICT">ICT</option>
+                    <option value="Accounting">Accounting</option>
+                    <option value="Finance">Finance</option>
+                  </select>
+                </div>
+
+                {/* Set Total Marks (Admin) */}
+                <div className="space-y-1 w-28">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600">
+                    {isBangla ? 'মোট নম্বর' : 'Set Total Marks (Admin)'}
                   </label>
                   <input
                     type="number"
-                    required
-                    value={newResult.marksObtained}
-                    onChange={e => setNewResult({ ...newResult, marksObtained: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">
-                    {isBangla ? 'মোট নম্বর *' : 'Total Marks *'}
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={newResult.totalMarks}
-                    onChange={e => setNewResult({ ...newResult, totalMarks: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
+                    min={1}
+                    value={bulkTotalMarks}
+                    onChange={e => {
+                      const val = Number(e.target.value);
+                      if (val > 0) setBulkTotalMarks(val);
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-center text-slate-800 focus:outline-none focus:border-maroon-600 shadow-2xs"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  {isBangla ? 'শিক্ষকের মন্তব্য' : 'Teacher Remarks'}
-                </label>
-                <input
-                  type="text"
-                  placeholder={isBangla ? 'উদাঃ চমৎকার উন্নতি হয়েছে' : 'e.g. Excellent conceptual explanation'}
-                  value={newResult.remarks}
-                  onChange={e => setNewResult({ ...newResult, remarks: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-maroon-600"
-                />
+              {/* Save / Publish All Scores Button */}
+              <button
+                type="button"
+                onClick={() => handleBulkSaveScores()}
+                className="px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold text-xs shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-2 shrink-0"
+              >
+                <Check className="w-4 h-4 text-emerald-300" />
+                <span>{isBangla ? 'Save / Publish All Scores' : 'Save / Publish All Scores'}</span>
+              </button>
+            </div>
+
+            {/* Bulk Entry Table matching Image 2 */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex-1 flex flex-col">
+              <div className="overflow-x-auto flex-1 max-h-[50vh] overflow-y-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-700 font-black uppercase tracking-wider text-[11px] sticky top-0 z-10 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3.5 w-16 text-center">{isBangla ? 'ক্রম' : 'SL'}</th>
+                      <th className="px-4 py-3.5 w-48">{isBangla ? 'শিক্ষার্থী আইডি' : 'Student ID'}</th>
+                      <th className="px-4 py-3.5">{isBangla ? 'শিক্ষার্থীর নাম' : 'Student Name'}</th>
+                      <th className="px-4 py-3.5 w-48 text-right">
+                        {isBangla ? 'প্রাপ্ত নম্বর' : 'Marks Obtained'} <span className="text-rose-600">*</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredBulkStudents.map((student, idx) => {
+                      const scoreVal = bulkScores[student.studentId] !== undefined ? bulkScores[student.studentId] : '';
+                      const isExceeded = Number(scoreVal) > bulkTotalMarks;
+                      return (
+                        <tr 
+                          key={student.id} 
+                          className={`hover:bg-slate-50/80 transition-colors ${scoreVal !== '' ? 'bg-rose-50/20' : ''}`}
+                        >
+                          <td className="px-4 py-3 text-center text-slate-500 font-bold">{idx + 1}</td>
+                          <td className="px-4 py-3 font-mono font-bold text-slate-800">{student.studentId}</td>
+                          <td className="px-4 py-3">
+                            <span className="font-bold text-slate-900">{student.name}</span>
+                            <span className="text-[10px] text-slate-400 ml-2">({student.currentClass || student.batch})</span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <input
+                              id={`bulk-score-input-${idx}`}
+                              type="number"
+                              min={0}
+                              max={bulkTotalMarks}
+                              placeholder="Enter Score"
+                              value={scoreVal}
+                              onChange={e => handleScoreChange(student.studentId, e.target.value)}
+                              onKeyDown={e => handleKeyDown(e, idx)}
+                              className={`w-full max-w-[160px] ml-auto px-3.5 py-2 text-right rounded-xl border font-bold text-xs transition-all focus:outline-none ${
+                                isExceeded
+                                  ? 'border-rose-500 bg-rose-50 text-rose-700 focus:ring-2 focus:ring-rose-400'
+                                  : scoreVal !== ''
+                                  ? 'border-maroon-300 bg-white text-maroon-900 focus:border-maroon-600 focus:ring-1 focus:ring-maroon-600'
+                                  : 'border-slate-200 bg-slate-50/60 text-slate-700 focus:bg-white focus:border-maroon-600'
+                              }`}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddResultModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold cursor-pointer"
-                >
-                  {isBangla ? 'বাতিল' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold shadow-xs cursor-pointer"
-                >
-                  {isBangla ? 'নম্বর প্রকাশ করুন' : 'Publish Score'}
-                </button>
+              {/* Table Footer Stats & Actions */}
+              <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
+                <div className="flex items-center gap-3">
+                  <span>
+                    {isBangla ? 'মোট শিক্ষার্থী:' : 'Total Students:'}{' '}
+                    <strong className="text-slate-800">{filteredBulkStudents.length}</strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    {isBangla ? 'নম্বর এন্ট্রি করা হয়েছে:' : 'Scores Entered:'}{' '}
+                    <strong className="text-maroon-800">
+                      {Object.values(bulkScores).filter(v => v !== '' && v !== undefined).length}
+                    </strong>
+                  </span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline text-slate-400">
+                    {isBangla ? 'টিপ: এক ঘর থেকে অন্য ঘরে যেতে Enter অথবা ArrowDown চাপুন' : 'Tip: Press Enter or ArrowDown to jump to next student'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddResultModal(false)}
+                    className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-200/60 font-bold transition-colors cursor-pointer"
+                  >
+                    {isBangla ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkSaveScores()}
+                    className="px-4 py-2 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>{isBangla ? 'সংরক্ষণ ও প্রকাশ' : 'Save & Publish'}</span>
+                  </button>
+                </div>
               </div>
-            </form>
+            </div>
+
           </div>
         </div>
       )}
@@ -2910,6 +3646,241 @@ export const AdminPortal: React.FC = () => {
                   className="px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold shadow-xs cursor-pointer"
                 >
                   {isBangla ? 'ইনভয়েস তৈরি করুন' : 'Generate Invoice'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD / EDIT BATCH */}
+      {showAddBatchModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowAddBatchModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 sm:p-7 space-y-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">
+                  {editingBatch 
+                    ? (isBangla ? 'ব্যাচ এডিট করুন' : 'Edit Batch Information') 
+                    : (isBangla ? 'নতুন ব্যাচ যোগ করুন' : 'Create New Batch')}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isBangla ? 'ব্যাচের সময়সূচী, শিক্ষক, ফি এবং ছবি পরিচালনা করুন' : 'Manage batch schedule, instructor, fee, and photo'}
+                </p>
+              </div>
+              <button onClick={() => setShowAddBatchModal(false)} className="p-2 rounded-xl hover:bg-slate-100 cursor-pointer">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBatch} className="space-y-4">
+              {/* Photo Upload & Preview */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-maroon-700" />
+                    <span>{isBangla ? 'ব্যাচ কভার ছবি (Batch Photo / Cover)' : 'Batch Cover Photo'}</span>
+                  </label>
+                  {(batchPhotoPreview || newBatch.photo) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBatchPhotoPreview('');
+                        setNewBatch(prev => ({ ...prev, photo: '' }));
+                      }}
+                      className="text-[11px] font-semibold text-rose-500 hover:text-rose-700 cursor-pointer"
+                    >
+                      {isBangla ? 'ছবি মুছুন' : 'Remove Photo'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="w-24 h-20 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                    {(batchPhotoPreview || newBatch.photo) ? (
+                      <img
+                        src={batchPhotoPreview || newBatch.photo}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={() => setBatchPhotoPreview('')}
+                      />
+                    ) : (
+                      <ImageIcon className="w-8 h-8 text-slate-300" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-maroon-50 hover:border-maroon-300 text-xs font-bold cursor-pointer transition-colors shadow-xs">
+                        <Upload className="w-3.5 h-3.5 text-maroon-700" />
+                        <span>{isBangla ? 'ছবি আপলোড করুন' : 'Upload Image'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleBatchPhotoUpload}
+                        />
+                      </label>
+                      <span className="text-[11px] text-slate-400 font-medium">PNG, JPG, WebP</span>
+                    </div>
+                    <input
+                      type="url"
+                      placeholder={isBangla ? 'অথবা ছবির অনলাইন URL দিন' : 'Or paste online image URL...'}
+                      value={newBatch.photo}
+                      onChange={e => {
+                        setNewBatch(prev => ({ ...prev, photo: e.target.value }));
+                        setBatchPhotoPreview(e.target.value);
+                      }}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:border-maroon-600"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Name & Code */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isBangla ? 'ব্যাচের নাম *' : 'Batch Name *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Class 10 Science Model Test Batch"
+                    value={newBatch.name}
+                    onChange={e => setNewBatch(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-maroon-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isBangla ? 'ব্যাচ কোড *' : 'Batch Code *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. PAC-C10-02"
+                    value={newBatch.code}
+                    onChange={e => setNewBatch(prev => ({ ...prev, code: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-maroon-600 uppercase"
+                  />
+                </div>
+              </div>
+
+              {/* Target Class & Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isBangla ? 'টার্গেট শ্রেণি / গ্রুপ *' : 'Target Class / Group *'}
+                  </label>
+                  <select
+                    value={newBatch.targetClass}
+                    onChange={e => setNewBatch(prev => ({ ...prev, targetClass: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-maroon-600"
+                  >
+                    <option value="Class 8">Class 8</option>
+                    <option value="Class 9 (Science)">Class 9 (Science)</option>
+                    <option value="Class 9 (Commerce)">Class 9 (Commerce)</option>
+                    <option value="Class 10 (Science)">Class 10 (Science)</option>
+                    <option value="Class 10 (Commerce)">Class 10 (Commerce)</option>
+                    <option value="SSC Special Batch">SSC Special Batch</option>
+                    <option value="HSC (Science)">HSC (Science)</option>
+                    <option value="HSC (Commerce)">HSC (Commerce)</option>
+                    <option value="General Foundation">General Foundation</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isBangla ? 'ভর্তির বর্তমান অবস্থা *' : 'Admission Status *'}
+                  </label>
+                  <select
+                    value={newBatch.status}
+                    onChange={e => setNewBatch(prev => ({ ...prev, status: e.target.value as any }))}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-maroon-600"
+                  >
+                    <option value="Admissions Open">Admissions Open</option>
+                    <option value="Ongoing">Ongoing</option>
+                    <option value="Full">Full (No Seats)</option>
+                    <option value="Upcoming">Upcoming</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Monthly Fee & Schedule */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isBangla ? 'মাসিক বেতন (৳) *' : 'Monthly Fee (৳) *'}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    placeholder="2500"
+                    value={newBatch.monthlyFee}
+                    onChange={e => setNewBatch(prev => ({ ...prev, monthlyFee: Number(e.target.value) }))}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-maroon-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isBangla ? 'ক্লাস সময়সূচী *' : 'Schedule *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Sat, Mon, Wed (8:00 AM - 10:30 AM)"
+                    value={newBatch.schedule}
+                    onChange={e => setNewBatch(prev => ({ ...prev, schedule: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-maroon-600"
+                  />
+                </div>
+              </div>
+
+              {/* Short Description */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {isBangla ? 'সংক্ষিপ্ত বিবরণ (Short Description)' : 'Short Description'}
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder={isBangla ? 'ব্যাচের মূল লক্ষ্য ও বিবরণ লিখুন...' : 'Key objective and focus of this batch...'}
+                  value={newBatch.shortDescription}
+                  onChange={e => setNewBatch(prev => ({ ...prev, shortDescription: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-maroon-600"
+                />
+              </div>
+
+              {/* Features (Comma-separated) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {isBangla ? 'প্রধান সুবিধাসমূহ (কমা দিয়ে আলাদা করুন)' : 'Key Features (Comma-separated)'}
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Weekly CQ practice, Formula memory maps, Model tests"
+                  value={newBatch.features}
+                  onChange={e => setNewBatch(prev => ({ ...prev, features: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-maroon-600"
+                />
+              </div>
+
+              {/* Form Buttons */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddBatchModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs cursor-pointer"
+                >
+                  {isBangla ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold text-xs shadow-xs cursor-pointer"
+                >
+                  {editingBatch
+                    ? (isBangla ? 'আপডেট সংরক্ষণ করুন' : 'Save Changes')
+                    : (isBangla ? 'ব্যাচ তৈরি করুন' : 'Create Batch')}
                 </button>
               </div>
             </form>

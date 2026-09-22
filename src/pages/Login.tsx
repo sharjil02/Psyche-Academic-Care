@@ -36,7 +36,7 @@ export const Login: React.FC = () => {
   const [showForgotModal, setShowForgotModal] = useState(false);
 
   // Quick fill demo helper
-  const handleQuickFill = (targetChoice: 'student8' | 'student10' | 'admin') => {
+  const handleQuickFill = (targetChoice: 'student8' | 'student9' | 'student10' | 'studentSSC' | 'studentHSC' | 'admin') => {
     setErrorMessage('');
     if (targetChoice === 'student8') {
       setRole('student');

@@ -1,20 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   mockStudentProfile, 
   mockEnrolledCourses, 
   mockExamResults, 
-  mockPaymentInvoices 
+  mockPaymentInvoices,
+  PortalExamResult
 } from '../data/studentPortalData';
 import {
   initialAdminNotices,
   initialAdminRoutines,
   initialAdminClassRoutines,
+  initialAdminResults,
   AdminNotice,
   AdminRoutine,
   AdminClassRoutine,
+  AdminExamResult,
   isClassMatching,
   normalizeClass,
+  createClassRoutineSvg,
 } from '../data/adminData';
 import { 
   UserCircle, 
@@ -67,16 +71,101 @@ export const StudentPortal: React.FC = () => {
   const [classRoutines, setClassRoutines] = useState<AdminClassRoutine[]>(() => {
     try {
       const saved = localStorage.getItem('pschye_class_routines');
-      return saved ? JSON.parse(saved) : initialAdminClassRoutines;
+      if (saved) {
+        const parsed: AdminClassRoutine[] = JSON.parse(saved);
+        return parsed.map(r => {
+          if (r.fileUrl && (r.fileUrl.startsWith('data:image/svg+xml;utf8,') || r.fileUrl.startsWith('data:image/svg+xml;charset=utf-8,'))) {
+            return {
+              ...r,
+              fileUrl: createClassRoutineSvg(r.targetClass, r.title)
+            };
+          }
+          return r;
+        });
+      }
+      return initialAdminClassRoutines;
     } catch {
       return initialAdminClassRoutines;
     }
   });
 
-  // Current student class (can be dynamically switched to test filtering per class)
-  const [selectedStudentClass, setSelectedStudentClass] = useState<string>(() => {
-    return currentUser?.currentClass || mockStudentProfile.currentClass || 'Class 8';
+  // Read admin results from localStorage & listen for live updates
+  const [adminExamResults, setAdminExamResults] = useState<AdminExamResult[]>(() => {
+    try {
+      const saved = localStorage.getItem('pschye_admin_results');
+      return saved ? JSON.parse(saved) : initialAdminResults;
+    } catch {
+      return initialAdminResults;
+    }
   });
+
+  useEffect(() => {
+    const handleResultsUpdate = () => {
+      try {
+        const saved = localStorage.getItem('pschye_admin_results');
+        if (saved) {
+          setAdminExamResults(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    window.addEventListener('adminResultsUpdate', handleResultsUpdate);
+    window.addEventListener('resultsUpdate', handleResultsUpdate);
+    window.addEventListener('storage', handleResultsUpdate);
+    return () => {
+      window.removeEventListener('adminResultsUpdate', handleResultsUpdate);
+      window.removeEventListener('resultsUpdate', handleResultsUpdate);
+      window.removeEventListener('storage', handleResultsUpdate);
+    };
+  }, []);
+
+  // Filter and compute exam results for active student
+  const studentExamResults = useMemo<PortalExamResult[]>(() => {
+    const activeStudentId = (currentUser?.studentId || currentUser?.identifier || mockStudentProfile.studentId).toLowerCase().trim();
+    
+    // Find all results matching this student ID
+    const myResults = adminExamResults.filter(
+      r => (r.studentId || '').toLowerCase().trim() === activeStudentId
+    );
+
+    if (myResults.length > 0) {
+      return myResults.map(r => {
+        // Find highest score in this exam and subject across all students
+        const allScores = adminExamResults
+          .filter(ar => ar.examName === r.examName && ar.subject === r.subject)
+          .map(ar => ar.marksObtained);
+        const highest = allScores.length > 0 ? Math.max(...allScores) : r.marksObtained;
+
+        return {
+          id: r.id,
+          examName: r.examName,
+          subject: r.subject,
+          date: r.date,
+          marksObtained: r.marksObtained,
+          totalMarks: r.totalMarks || 100,
+          grade: r.grade,
+          gpa: r.gpa,
+          highestInBatch: highest,
+          remarks: r.remarks || (r.marksObtained >= ((r.totalMarks || 100) * 0.8) ? 'Outstanding conceptual performance' : 'Keep practicing regularly')
+        };
+      });
+    }
+
+    // Default fallback to mock exam results so portal always has data
+    return mockExamResults;
+  }, [adminExamResults, currentUser]);
+
+  // Compute student's average GPA
+  const currentGPA = useMemo(() => {
+    if (studentExamResults.length === 0) return '5.00';
+    const totalGpa = studentExamResults.reduce((acc, curr) => acc + curr.gpa, 0);
+    return (totalGpa / studentExamResults.length).toFixed(2);
+  }, [studentExamResults]);
+
+  // Selected routine class filter ('All' displays all routines together)
+  const [selectedStudentClass, setSelectedStudentClass] = useState<string>('All');
 
   const [studentRoutinePreview, setStudentRoutinePreview] = useState<AdminClassRoutine | null>(null);
   const [studentRoutineViewMode, setStudentRoutineViewMode] = useState<'files' | 'slots'>('files');
@@ -85,7 +174,18 @@ export const StudentPortal: React.FC = () => {
     const handleRoutineUpdate = () => {
       try {
         const saved = localStorage.getItem('pschye_class_routines');
-        if (saved) setClassRoutines(JSON.parse(saved));
+        if (saved) {
+          const parsed: AdminClassRoutine[] = JSON.parse(saved);
+          setClassRoutines(parsed.map(r => {
+            if (r.fileUrl && (r.fileUrl.startsWith('data:image/svg+xml;utf8,') || r.fileUrl.startsWith('data:image/svg+xml;charset=utf-8,'))) {
+              return {
+                ...r,
+                fileUrl: createClassRoutineSvg(r.targetClass, r.title)
+              };
+            }
+            return r;
+          }));
+        }
       } catch (e) {
         console.error(e);
       }
@@ -93,12 +193,6 @@ export const StudentPortal: React.FC = () => {
     window.addEventListener('classRoutinesUpdate', handleRoutineUpdate);
     return () => window.removeEventListener('classRoutinesUpdate', handleRoutineUpdate);
   }, []);
-
-  useEffect(() => {
-    if (currentUser?.currentClass) {
-      setSelectedStudentClass(currentUser.currentClass);
-    }
-  }, [currentUser]);
 
   // Student's enrolled batch for routine filtering
   const studentBatch = mockStudentProfile.batch;
@@ -452,7 +546,7 @@ export const StudentPortal: React.FC = () => {
                     </p>
                   </div>
                   <div className="text-xs font-bold text-maroon-800 bg-maroon-50 px-3 py-1 rounded-full border border-maroon-200 self-start">
-                    {isBangla ? 'বর্তমান সিজিপিএ: ৫.০০' : 'Current Cumulative GPA: 5.00'}
+                    {isBangla ? `বর্তমান জিপিএ: ${currentGPA}` : `Current GPA: ${currentGPA}`}
                   </div>
                 </div>
 
@@ -469,7 +563,7 @@ export const StudentPortal: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {mockExamResults.map((item) => (
+                      {studentExamResults.map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="py-3.5 px-3">
                             <div className="font-bold text-slate-900">{item.subject}</div>
@@ -642,15 +736,19 @@ export const StudentPortal: React.FC = () => {
                   <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-maroon-50 border border-maroon-200 text-maroon-800 text-xs font-bold uppercase tracking-wider mb-2">
                       <GraduationCap className="w-3.5 h-3.5" />
-                      <span>{isBangla ? `আপনার শ্রেণী: ${selectedStudentClass}` : `Enrolled Class: ${selectedStudentClass}`}</span>
+                      <span>
+                        {selectedStudentClass === 'All' 
+                          ? (isBangla ? 'সকল শ্রেণীর রুটিন' : 'All Class Routines') 
+                          : (isBangla ? `নির্বাচিত শ্রেণী: ${selectedStudentClass}` : `Selected Class: ${selectedStudentClass}`)}
+                      </span>
                     </div>
                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                      {isBangla ? 'আমার ক্লাস রুটিন (Image / PDF)' : 'My Class Routine'}
+                      {isBangla ? 'একাডেমিক ক্লাস রুটিন (Image / PDF)' : 'Academic Class Routines'}
                     </h2>
                     <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
                       {isBangla
-                        ? `অ্যাডমিন প্যানেল থেকে শুধুমাত্র ${selectedStudentClass}-এর জন্য প্রকাশিত রুটিন এখানে প্রদর্শিত হচ্ছে।`
-                        : `Showing routines published exclusively for ${selectedStudentClass}.`}
+                        ? 'অ্যাডমিন প্যানেল থেকে আপলোডকৃত সকল শ্রেণীর রুটিন এখানে প্রদর্শিত হচ্ছে। প্রতিটি রুটিনের উপরে শ্রেণী উল্লেখ রয়েছে।'
+                        : 'All class routines uploaded from admin are shown here. Target class is indicated on top of each routine.'}
                     </p>
                   </div>
 
@@ -677,14 +775,14 @@ export const StudentPortal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Interactive Testing Class Switcher */}
+                {/* Routine Filter Switcher (All by default) */}
                 <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-50 via-rose-50/40 to-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2 text-slate-700 font-bold">
                     <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span>{isBangla ? 'ভিন্ন শ্রেণীর রুটিন ফিল্টার পরীক্ষা করুন:' : 'Test filtering with other classes:'}</span>
+                    <span>{isBangla ? 'রুটিন ফিল্টার:' : 'Filter Routines:'}</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {['Class 8', 'Class 9 (Science)', 'Class 9 (Commerce)', 'Class 10 (Science)', 'Class 10 (Commerce)', 'SSC Special Batch', 'HSC (Science)', 'HSC (Commerce)'].map(cls => (
+                    {['All', 'Class 8', 'Class 9 (Science)', 'Class 9 (Commerce)', 'Class 10 (Science)', 'Class 10 (Commerce)', 'SSC Special Batch', 'HSC (Science)', 'HSC (Commerce)'].map(cls => (
                       <button
                         key={cls}
                         type="button"
@@ -695,7 +793,7 @@ export const StudentPortal: React.FC = () => {
                             : 'bg-white text-slate-600 hover:bg-slate-200/80 border border-slate-200'
                         }`}
                       >
-                        {cls}
+                        {cls === 'All' ? (isBangla ? 'সকল রুটিন' : 'All Routines') : cls}
                       </button>
                     ))}
                   </div>
@@ -703,9 +801,11 @@ export const StudentPortal: React.FC = () => {
 
                 {/* VIEW 1: CLASS ROUTINE FILES (IMAGE / PDF) */}
                 {studentRoutineViewMode === 'files' && (() => {
-                  const myClassRoutines = classRoutines.filter(r => isClassMatching(r.targetClass, selectedStudentClass));
+                  const displayedRoutines = selectedStudentClass === 'All'
+                    ? classRoutines
+                    : classRoutines.filter(r => isClassMatching(r.targetClass, selectedStudentClass));
 
-                  if (myClassRoutines.length === 0) {
+                  if (displayedRoutines.length === 0) {
                     return (
                       <div className="text-center py-16 px-4 bg-slate-50/50 rounded-3xl border border-dashed border-slate-300 space-y-3">
                         <div className="w-14 h-14 rounded-2xl bg-white shadow-xs border border-slate-200 flex items-center justify-center text-slate-400 mx-auto">
@@ -713,30 +813,30 @@ export const StudentPortal: React.FC = () => {
                         </div>
                         <h4 className="text-base font-bold text-slate-800">
                           {isBangla
-                            ? `${selectedStudentClass}-এর জন্য এখনও কোনো রুটিন প্রকাশ করা হয়নি`
-                            : `No routine published for ${selectedStudentClass} yet`}
+                            ? `${selectedStudentClass === 'All' ? 'এখনও কোনো রুটিন আপলোড করা হয়নি' : `${selectedStudentClass}-এর জন্য এখনও কোনো রুটিন প্রকাশ করা হয়নি`}`
+                            : `No routine published ${selectedStudentClass === 'All' ? 'yet' : `for ${selectedStudentClass} yet`}`}
                         </h4>
                         <p className="text-xs text-slate-500 max-w-sm mx-auto">
                           {isBangla
-                            ? 'অ্যাডমিন প্যানেল থেকে এই শ্রেণীর জন্য ইমেজ বা পিডিএফ রুটিন আপলোড হলে তা সরাসরি আপনার এই প্যানেলে চলে আসবে।'
-                            : 'When an admin uploads a routine for this class, it will appear here instantly.'}
+                            ? 'অ্যাডমিন প্যানেল থেকে ইমেজ বা পিডিএফ রুটিন আপলোড হলে তা সরাসরি সকল শিক্ষার্থীর এই প্যানেলে প্রদর্শিত হবে।'
+                            : 'When an admin uploads a routine, it will appear here instantly for all students.'}
                         </p>
                       </div>
                     );
                   }
 
                   return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {myClassRoutines.map(routine => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {displayedRoutines.map(routine => (
                         <div
                           key={routine.id}
                           className="bg-white rounded-3xl border border-slate-200 hover:border-maroon-300 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group"
                         >
                           <div>
-                            {/* Card Header */}
-                            <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-2 bg-gradient-to-r from-slate-50 to-white">
-                              <span className="px-3 py-1 rounded-full text-xs font-black bg-maroon-100 text-maroon-900 border border-maroon-200 flex items-center gap-1.5">
-                                <GraduationCap className="w-3.5 h-3.5 text-maroon-800" />
+                            {/* Card Header & Class Badge */}
+                            <div className="p-3 sm:p-3.5 border-b border-slate-100 flex items-center justify-between gap-2 bg-gradient-to-r from-slate-50 to-white">
+                              <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-900 border border-rose-200/80 flex items-center gap-1.5 shadow-2xs">
+                                <GraduationCap className="w-3.5 h-3.5 text-rose-700" />
                                 {routine.targetClass}
                               </span>
 
@@ -745,25 +845,33 @@ export const StudentPortal: React.FC = () => {
                                   ? 'bg-rose-50 text-rose-700 border-rose-200' 
                                   : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               }`}>
-                                {routine.fileType === 'pdf' ? '📄 PDF Document' : '🖼️ Image Routine'}
+                                {routine.fileType === 'pdf' ? '📄 PDF' : '🖼️ IMAGE'}
                               </span>
                             </div>
 
                             {/* Preview Area */}
                             <div
                               onClick={() => setStudentRoutinePreview(routine)}
-                              className="relative h-56 bg-slate-100 cursor-pointer overflow-hidden flex items-center justify-center group/preview border-b border-slate-100"
+                              className="relative h-44 sm:h-48 bg-slate-100 cursor-pointer overflow-hidden flex items-center justify-center group/preview border-b border-slate-100"
                             >
                               {routine.fileType === 'image' || routine.fileUrl.startsWith('data:image') ? (
                                 <img
                                   src={routine.fileUrl}
                                   alt={routine.title}
                                   className="w-full h-full object-cover object-top transition-transform duration-300 group-hover/preview:scale-105"
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    try {
+                                      target.src = createClassRoutineSvg(routine.targetClass, routine.title);
+                                    } catch {
+                                      // ignore
+                                    }
+                                  }}
                                 />
                               ) : (
-                                <div className="p-6 text-center space-y-2.5">
-                                  <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mx-auto shadow-xs">
-                                    <FileText className="w-8 h-8" />
+                                <div className="p-4 text-center space-y-2">
+                                  <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mx-auto shadow-xs">
+                                    <FileText className="w-6 h-6" />
                                   </div>
                                   <div className="text-xs font-bold text-slate-800 line-clamp-1">{routine.fileName}</div>
                                   <span className="text-[11px] text-slate-500 font-medium">{routine.fileSize || 'PDF Document'}</span>
@@ -772,55 +880,54 @@ export const StudentPortal: React.FC = () => {
 
                               {/* Hover overlay */}
                               <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-2xs">
-                                <span className="px-3.5 py-2 rounded-xl bg-white/95 text-slate-900 text-xs font-bold shadow-md flex items-center gap-2">
-                                  <ZoomIn className="w-4 h-4 text-maroon-800" />
-                                  <span>{isBangla ? 'পূর্ণাঙ্গ রুটিন জুম করে দেখুন' : 'Click to View Full Size'}</span>
+                                <span className="px-3.5 py-1.5 rounded-xl bg-white/95 text-slate-900 text-xs font-bold shadow-md flex items-center gap-1.5">
+                                  <ZoomIn className="w-3.5 h-3.5 text-maroon-800" />
+                                  <span>{isBangla ? 'রুটিন দেখুন' : 'View Routine'}</span>
                                 </span>
                               </div>
                             </div>
 
-                            {/* Content */}
-                            <div className="p-5 space-y-2.5">
-                              <h3 className="text-base font-bold text-slate-900 leading-snug">
+                            {/* Content Info */}
+                            <div className="p-4 space-y-1.5">
+                              <h4 className="text-sm sm:text-base font-black text-slate-900 leading-snug line-clamp-2">
                                 {routine.title}
-                              </h3>
+                              </h4>
 
-                              <div className="space-y-1 text-xs text-slate-500">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span>{isBangla ? 'প্রকাশের তারিখ:' : 'Published:'} <strong className="text-slate-700">{routine.uploadedAt}</strong></span>
-                                  {routine.effectiveDate && (
-                                    <span className="text-maroon-800 font-bold">
-                                      {isBangla ? `কার্যকর: ${routine.effectiveDate}` : `Effective: ${routine.effectiveDate}`}
-                                    </span>
-                                  )}
-                                </div>
-                                {routine.notes && (
-                                  <p className="text-xs text-slate-600 bg-rose-50/50 p-2.5 rounded-xl border border-rose-100/80 leading-relaxed italic">
-                                    "{routine.notes}"
-                                  </p>
-                                )}
+                              <div className="flex items-center justify-between text-xs text-slate-500 pt-0.5">
+                                <span>{isBangla ? 'আপলোড:' : 'Uploaded:'} <strong className="text-slate-700 font-semibold">{routine.uploadedAt}</strong></span>
+                                <span className="text-[11px] font-semibold text-slate-500">{routine.fileSize || '450 KB'}</span>
                               </div>
+
+                              <div className="text-xs text-maroon-800 font-bold">
+                                {isBangla ? `কার্যকর: ${routine.effectiveDate || 'তাৎক্ষণিক'}` : `Effective: ${routine.effectiveDate || 'Immediate'}`}
+                              </div>
+
+                              {routine.notes && (
+                                <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100 italic line-clamp-2 mt-1">
+                                  "{routine.notes}"
+                                </p>
+                              )}
                             </div>
                           </div>
 
                           {/* Card Footer Actions */}
-                          <div className="p-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-3">
+                          <div className="p-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-2">
                             <button
                               type="button"
                               onClick={() => setStudentRoutinePreview(routine)}
-                              className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-maroon-800 hover:text-maroon-900 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                              className="px-4 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                             >
                               <Eye className="w-3.5 h-3.5 text-maroon-800" />
-                              <span>{isBangla ? 'পূর্ণাঙ্গ রুটিন দেখুন' : 'View Routine'}</span>
+                              <span>{isBangla ? 'দেখুন' : 'View'}</span>
                             </button>
 
                             <a
                               href={routine.fileUrl}
                               download={routine.fileName || `${routine.targetClass}-routine.${routine.fileType === 'pdf' ? 'pdf' : 'png'}`}
-                              className="px-4 py-2 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                              className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-maroon-800 transition-colors cursor-pointer"
+                              title={isBangla ? 'ডাউনলোড' : 'Download'}
                             >
-                              <Download className="w-3.5 h-3.5" />
-                              <span>{isBangla ? 'ডাউনলোড' : 'Download'}</span>
+                              <Download className="w-4 h-4" />
                             </a>
                           </div>
 

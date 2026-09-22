@@ -16,6 +16,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { coursesData } from '../data/courses';
+import { BatchInfo, initialAdminBatches } from '../data/adminData';
 import { useLanguage } from '../context/LanguageContext';
 
 interface AdmissionFormProps {
@@ -43,6 +44,34 @@ export const AdmissionForm: React.FC<AdmissionFormProps> = ({ initialCourse = ''
   const [submitted, setSubmitted] = useState(false);
   const [applicationId, setApplicationId] = useState('');
   const [submissionDate, setSubmissionDate] = useState('');
+
+  const [adminBatches, setAdminBatches] = useState<BatchInfo[]>(() => {
+    try {
+      const saved = localStorage.getItem('pschye_admin_batches');
+      return saved ? JSON.parse(saved) : initialAdminBatches;
+    } catch {
+      return initialAdminBatches;
+    }
+  });
+
+  useEffect(() => {
+    const handleBatchesUpdate = () => {
+      try {
+        const saved = localStorage.getItem('pschye_admin_batches');
+        if (saved) {
+          setAdminBatches(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    window.addEventListener('storage', handleBatchesUpdate);
+    window.addEventListener('batchesUpdate', handleBatchesUpdate);
+    return () => {
+      window.removeEventListener('storage', handleBatchesUpdate);
+      window.removeEventListener('batchesUpdate', handleBatchesUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     if (initialCourse) {
@@ -502,12 +531,27 @@ export const AdmissionForm: React.FC<AdmissionFormProps> = ({ initialCourse = ''
                   : 'border-slate-200 focus:border-maroon-600 focus:ring-maroon-100 bg-slate-50/30'
               }`}
             >
-              <option value="">{isBangla ? 'কোর্স নির্বাচন করুন' : 'Select a Course'}</option>
-              {coursesData.map(c => (
-                <option key={c.id} value={c.name}>
-                  {c.name} (৳{c.monthlyFee}/{isBangla ? 'মাস' : 'mo'})
-                </option>
-              ))}
+              <option value="">{isBangla ? 'কোর্স বা ব্যাচ নির্বাচন করুন' : 'Select a Course or Batch'}</option>
+              
+              {/* Active Batches created by Admin */}
+              {adminBatches.length > 0 && (
+                <optgroup label={isBangla ? '── সক্রিয় কোচিং ব্যাচসমূহ ──' : '── Active Coaching Batches ──'}>
+                  {adminBatches.map(b => (
+                    <option key={b.id} value={b.name}>
+                      {b.name} ({b.code}) — ৳{b.monthlyFee || 2500}/{isBangla ? 'মাস' : 'mo'} {b.status ? `[${b.status}]` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+
+              {/* Standard Academic Programs */}
+              <optgroup label={isBangla ? '── সাধারণ একাডেমিক কোর্সসমূহ ──' : '── Standard Academic Programs ──'}>
+                {coursesData.map(c => (
+                  <option key={c.id} value={c.name}>
+                    {c.name} (৳{c.monthlyFee}/{isBangla ? 'মাস' : 'mo'})
+                  </option>
+                ))}
+              </optgroup>
             </select>
             {errors.course && (
               <p className="text-xs text-red-600 mt-1 flex items-center gap-1">

@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { CourseCard } from '../components/CourseCard';
 import { coursesData } from '../data/courses';
+import { BatchInfo, initialAdminBatches } from '../data/adminData';
+import { Course } from '../types';
 import { Search, BookOpen, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -8,6 +10,34 @@ export const Courses: React.FC = () => {
   const { t, isBangla } = useLanguage();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const [adminBatches, setAdminBatches] = useState<BatchInfo[]>(() => {
+    try {
+      const saved = localStorage.getItem('pschye_admin_batches');
+      return saved ? JSON.parse(saved) : initialAdminBatches;
+    } catch {
+      return initialAdminBatches;
+    }
+  });
+
+  useEffect(() => {
+    const handleBatchesUpdate = () => {
+      try {
+        const saved = localStorage.getItem('pschye_admin_batches');
+        if (saved) {
+          setAdminBatches(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    window.addEventListener('storage', handleBatchesUpdate);
+    window.addEventListener('batchesUpdate', handleBatchesUpdate);
+    return () => {
+      window.removeEventListener('storage', handleBatchesUpdate);
+      window.removeEventListener('batchesUpdate', handleBatchesUpdate);
+    };
+  }, []);
 
   const categories = [
     { id: 'All', label: isBangla ? 'সকল ব্যাচ ও কোর্স' : 'All Batches' },
@@ -21,9 +51,38 @@ export const Courses: React.FC = () => {
     { id: 'HSC (Commerce)', label: isBangla ? 'এইচএসসি (ব্যবসায় শিক্ষা)' : 'HSC (Commerce)' },
   ];
 
+  const allCoursesAndBatches = useMemo<Course[]>(() => {
+    const batchCourses: Course[] = adminBatches.map(b => ({
+      id: b.id,
+      name: b.name,
+      category: b.targetClass,
+      shortDescription: b.shortDescription || `${b.name} (${b.code}) guided by ${b.instructor}. Schedule: ${b.schedule}.`,
+      fullDescription: b.fullDescription || `${b.name} (${b.code}) offers comprehensive curriculum coverage. Instructor: ${b.instructor}. Classroom: ${b.room}. Schedule: ${b.schedule}.`,
+      duration: 'Full Academic Year',
+      classDays: b.schedule || 'Regular Classes',
+      monthlyFee: b.monthlyFee || 2500,
+      batchSize: `${b.capacity} Students max (${b.enrolledCount} enrolled)`,
+      targetAudience: `${b.targetClass} Students`,
+      features: b.features && b.features.length > 0 ? b.features : [
+        `Taught by ${b.instructor}`,
+        `Weekly sessions in ${b.room}`,
+        `Board format continuous examinations`,
+        `Direct parent progress updates`
+      ],
+      image: b.photo || 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80'
+    }));
+
+    const existingNames = new Set(batchCourses.map(c => c.name.toLowerCase()));
+    const uniqueBaseCourses = coursesData.filter(c => !existingNames.has(c.name.toLowerCase()));
+
+    return [...batchCourses, ...uniqueBaseCourses];
+  }, [adminBatches]);
+
   const filteredCourses = useMemo(() => {
-    return coursesData.filter(course => {
-      const matchesCategory = selectedCategory === 'All' || course.category === selectedCategory;
+    return allCoursesAndBatches.filter(course => {
+      const matchesCategory = selectedCategory === 'All' || 
+        course.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+        selectedCategory.toLowerCase().includes(course.category.toLowerCase());
       const matchesQuery = 
         course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         course.shortDescription.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -31,7 +90,7 @@ export const Courses: React.FC = () => {
         course.category.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesQuery;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [allCoursesAndBatches, selectedCategory, searchQuery]);
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 pt-8 sm:pt-10">

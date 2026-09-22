@@ -4,7 +4,7 @@ import { Hero } from '../components/Hero';
 import { SectionTitle } from '../components/SectionTitle';
 import { ResultCard } from '../components/ResultCard';
 import { resultsData, statisticsOverview } from '../data/results';
-import { initialAdminNotices, AdminNotice } from '../data/adminData';
+import { initialAdminNotices, AdminNotice, BatchInfo, initialAdminBatches } from '../data/adminData';
 import { StudentResult } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { 
@@ -23,6 +23,9 @@ import {
   Bell,
   Layers,
   Lightbulb,
+  Users,
+  Clock,
+  Building,
 } from 'lucide-react';
 
 export const Home: React.FC = () => {
@@ -57,11 +60,76 @@ export const Home: React.FC = () => {
 
   const [selectedNoticeModal, setSelectedNoticeModal] = useState<AdminNotice | null>(null);
 
-  const [homeNotices] = useState<AdminNotice[]>(() => {
-    const saved = localStorage.getItem('pschye_admin_notices');
-    const all: AdminNotice[] = saved ? JSON.parse(saved) : initialAdminNotices;
-    return all.filter(n => !n.target || n.target === 'home' || n.target === 'both');
+  const [homeNotices, setHomeNotices] = useState<AdminNotice[]>(() => {
+    try {
+      const saved = localStorage.getItem('pschye_admin_notices');
+      const all: AdminNotice[] = saved ? JSON.parse(saved) : initialAdminNotices;
+      return all.filter(n => !n.target || n.target === 'home' || n.target === 'both');
+    } catch {
+      return initialAdminNotices.filter(n => !n.target || n.target === 'home' || n.target === 'both');
+    }
   });
+
+  useEffect(() => {
+    const handleNoticesUpdate = () => {
+      try {
+        const saved = localStorage.getItem('pschye_admin_notices');
+        const all: AdminNotice[] = saved ? JSON.parse(saved) : initialAdminNotices;
+        setHomeNotices(all.filter(n => !n.target || n.target === 'home' || n.target === 'both'));
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    window.addEventListener('storage', handleNoticesUpdate);
+    return () => {
+      window.removeEventListener('storage', handleNoticesUpdate);
+    };
+  }, []);
+
+  const [homeBatches, setHomeBatches] = useState<BatchInfo[]>(() => {
+    try {
+      const saved = localStorage.getItem('pschye_admin_batches');
+      if (saved) {
+        const parsed: BatchInfo[] = JSON.parse(saved);
+        return parsed.map(b => {
+          const match = initialAdminBatches.find(init => init.id === b.id || init.code === b.code);
+          return {
+            ...match,
+            ...b,
+            photo: b.photo || match?.photo || 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80',
+            monthlyFee: b.monthlyFee || match?.monthlyFee || 2500,
+            shortDescription: b.shortDescription || match?.shortDescription || '',
+            status: b.status || match?.status || 'Admissions Open',
+          };
+        });
+      }
+      return initialAdminBatches;
+    } catch {
+      return initialAdminBatches;
+    }
+  });
+
+  const [selectedBatchClass, setSelectedBatchClass] = useState<string>('All');
+
+  useEffect(() => {
+    const handleBatchesUpdate = () => {
+      try {
+        const saved = localStorage.getItem('pschye_admin_batches');
+        if (saved) {
+          const parsed: BatchInfo[] = JSON.parse(saved);
+          setHomeBatches(parsed);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    window.addEventListener('storage', handleBatchesUpdate);
+    window.addEventListener('batchesUpdate', handleBatchesUpdate);
+    return () => {
+      window.removeEventListener('storage', handleBatchesUpdate);
+      window.removeEventListener('batchesUpdate', handleBatchesUpdate);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -288,6 +356,179 @@ export const Home: React.FC = () => {
                 {t('home.feature6Desc')}
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. ACADEMIC COURSES & BATCHES SHOWCASE */}
+      <section className="py-20 bg-white border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <SectionTitle
+            badge={isBangla ? 'একাডেমিক ব্যাচ ও কোর্স' : 'Academic Courses & Batches'}
+            title={isBangla ? 'আমাদের বিশেষায়িত কোচিং ব্যাচসমূহ' : 'Our Specialized Academic Batches'}
+            description={isBangla 
+              ? 'নির্দিষ্ট সীমিত আসনসংখ্যা, বিষয়ভিত্তিক অভিজ্ঞ শিক্ষক এবং বোর্ড পরীক্ষার পুঙ্খানুপুঙ্খ প্রস্তুতি।' 
+              : 'Strictly capped batches with expert faculty, board-aligned curriculum, and continuous personal mentoring.'}
+          />
+
+          {/* Quick Filter Chips */}
+          <div className="flex items-center justify-center gap-2 overflow-x-auto pb-6 scrollbar-none">
+            {[
+              { id: 'All', label: isBangla ? 'সকল ব্যাচ' : 'All Batches' },
+              { id: 'Class 8', label: isBangla ? '৮ম শ্রেণি' : 'Class 8' },
+              { id: 'Class 9', label: isBangla ? '৯ম শ্রেণি' : 'Class 9' },
+              { id: 'Class 10', label: isBangla ? '১০ম শ্রেণি' : 'Class 10' },
+              { id: 'SSC Special', label: isBangla ? 'এসএসসি স্পেশাল' : 'SSC Special' },
+              { id: 'HSC', label: isBangla ? 'এইচএসসি' : 'HSC' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedBatchClass(tab.id)}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  selectedBatchClass === tab.id
+                    ? 'bg-maroon-800 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Batches Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-4">
+            {homeBatches
+              .filter(b => {
+                if (selectedBatchClass === 'All') return true;
+                return b.targetClass.toLowerCase().includes(selectedBatchClass.toLowerCase()) ||
+                       b.name.toLowerCase().includes(selectedBatchClass.toLowerCase());
+              })
+              .map(b => (
+                <div
+                  key={b.id}
+                  className="rounded-3xl border border-slate-200 bg-white hover:border-maroon-300 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group"
+                >
+                  {/* Photo & Overlay Badges */}
+                  <div className="relative h-48 sm:h-52 bg-slate-100 overflow-hidden">
+                    <img
+                      src={b.photo || 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80'}
+                      alt={b.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/25 to-black/20" />
+                    
+                    <div className="absolute top-3.5 left-3.5 flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-white/95 text-maroon-900 shadow-sm border border-white/40">
+                        {b.code}
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-xs ${
+                        b.status === 'Full'
+                          ? 'bg-rose-600 text-white'
+                          : b.status === 'Upcoming'
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-emerald-600 text-white'
+                      }`}>
+                        {b.status || 'Admissions Open'}
+                      </span>
+                    </div>
+
+                    {b.monthlyFee && (
+                      <div className="absolute top-3.5 right-3.5 px-3 py-1 rounded-xl bg-maroon-900/90 backdrop-blur-xs text-white text-xs font-black shadow-md border border-white/20">
+                        ৳{b.monthlyFee.toLocaleString()}/{isBangla ? 'মাস' : 'mo'}
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-3.5 left-3.5 right-3.5 text-white">
+                      <span className="text-[11px] font-bold text-rose-200 block uppercase tracking-wider mb-0.5">
+                        {b.targetClass}
+                      </span>
+                      <h3 className="text-base sm:text-lg font-black text-white leading-snug drop-shadow-xs line-clamp-1">
+                        {b.name}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
+                    {b.shortDescription && (
+                      <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-relaxed">
+                        {b.shortDescription}
+                      </p>
+                    )}
+
+                    {/* Schedule & Info Pill Box */}
+                    <div className="space-y-2 text-xs text-slate-600 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100">
+                      {b.schedule && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-maroon-700 shrink-0" />
+                          <span className="truncate"><strong>{isBangla ? 'সময়:' : 'Time:'}</strong> {b.schedule}</span>
+                        </div>
+                      )}
+                      {b.instructor && (
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-maroon-700 shrink-0" />
+                          <span className="truncate"><strong>{isBangla ? 'শিক্ষক:' : 'Faculty:'}</strong> {b.instructor}</span>
+                        </div>
+                      )}
+                      {b.room && (
+                        <div className="flex items-center gap-2">
+                          <Building className="w-4 h-4 text-maroon-700 shrink-0" />
+                          <span className="truncate"><strong>{isBangla ? 'রুম:' : 'Room:'}</strong> {b.room}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Seat Occupancy Meter (if capacity is defined) */}
+                    {b.capacity && b.capacity > 0 ? (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+                          <span>{isBangla ? 'আসন প্রাপ্যতা' : 'Seat Availability'}</span>
+                          <span className={`font-bold ${(b.enrolledCount || 0) >= b.capacity ? 'text-rose-600' : 'text-slate-900'}`}>
+                            {b.enrolledCount || 0} / {b.capacity} {isBangla ? 'ভর্তি সম্পন্ন' : 'Enrolled'}
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              (b.enrolledCount || 0) >= b.capacity ? 'bg-rose-500' : 'bg-gradient-to-r from-maroon-800 to-rose-600'
+                            }`}
+                            style={{ width: `${Math.min(100, Math.round(((b.enrolledCount || 0) / b.capacity) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Action Buttons */}
+                    <div className="pt-2 flex items-center gap-2.5">
+                      <Link
+                        to={`/admission?course=${encodeURIComponent(b.name)}`}
+                        className="flex-1 py-2.5 px-4 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                      >
+                        <span>{isBangla ? 'আবেদন করুন' : 'Apply Now'}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                      <Link
+                        to="/courses"
+                        className="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                      >
+                        {isBangla ? 'বিস্তারিত' : 'Details'}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+
+          {/* Section Footer Link */}
+          <div className="mt-12 text-center">
+            <Link
+              to="/courses"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-maroon-50 text-maroon-800 font-bold text-sm border-2 border-maroon-800 shadow-sm transition-all hover:shadow-md"
+            >
+              <span>{isBangla ? 'সকল ব্যাচ ও পূর্ণাঙ্গ সিলেবাস দেখুন' : 'Explore All Batches & Courses'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </section>

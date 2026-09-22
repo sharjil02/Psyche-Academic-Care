@@ -2,7 +2,6 @@ import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { AdmissionForm } from '../components/AdmissionForm';
 import { 
-  Sparkles, 
   FileText, 
   CheckCircle2, 
   Phone, 
@@ -45,8 +44,7 @@ export const Admission: React.FC = () => {
       {/* Page Header */}
       <section className="bg-gradient-to-b from-maroon-50/70 via-slate-50 to-white py-16 sm:py-20 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-maroon-100/80 text-maroon-800 text-xs font-bold uppercase tracking-wider mb-4 border border-maroon-200">
-            <Sparkles className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center px-3 py-1 rounded-full bg-maroon-100/80 text-maroon-800 text-xs font-bold uppercase tracking-wider mb-4 border border-maroon-200">
             <span>{t('admission.badge')}</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
@@ -125,15 +123,11 @@ export const Admission: React.FC = () => {
               <ul className="space-y-2 text-xs text-slate-600">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-maroon-700 shrink-0 mt-0.5" />
-                  <span>{isBangla ? 'শিক্ষার্থীর ২ কপি পাসপোর্ট সাইজ ছবি' : '2 Passport-sized photographs of student'}</span>
+                  <span>{isBangla ? 'শিক্ষার্থীর ১ কপি পাসপোর্ট সাইজ ছবি' : '1 passport-sized photographs of student'}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-maroon-700 shrink-0 mt-0.5" />
-                  <span>{isBangla ? 'সর্বশেষ পরীক্ষার রিপোর্ট কার্ড বা প্রবেশপত্রের ফটোকপি' : 'Photocopy of previous school report card / board admit'}</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-maroon-700 shrink-0 mt-0.5" />
-                  <span>{isBangla ? 'জন্ম নিবন্ধন অথবা জাতীয় পরিচয়পত্রের ফটোকপি' : 'National ID or Birth Certificate copy'}</span>
+                  <span>{isBangla ? 'ভর্তি ফি ৫০০ টাকা (অফেরতযোগ্য)' : '500 tk For admission (Not Refundable)'}</span>
                 </li>
               </ul>
             </div>

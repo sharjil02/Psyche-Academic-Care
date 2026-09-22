@@ -1,7 +1,7 @@
 export interface Course {
   id: string;
   name: string;
-  category: 'Class 8' | 'Class 9' | 'Class 10' | 'Class 10 Special Batch';
+  category: string;
   shortDescription: string;
   fullDescription: string;
   duration: string;
